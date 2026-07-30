@@ -1,0 +1,23 @@
+/* App-level style overrides. Base styling lives in index.css. */
+
+.App {
+  min-height: 100vh;
+  background: #090d16;
+}
+
+/* Prose paragraph small-caps drop */
+.paper-prose > *:first-child {
+  margin-top: 0;
+}
+
+/* JetBrains Mono for inline code inside headers */
+h1 code, h2 code, h3 code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8em;
+  background: rgba(59, 130, 246, 0.09);
+  color: #93c5fd;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-weight: 400;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}

@@ -1,0 +1,42 @@
+{
+  "summary": "First iteration backend regression for EUDI-Nexus Sprint 1-5. Wrote 34 pytest test cases in /app/backend/tests/backend_test.py covering all endpoints referenced in the review request: /api/health, /api/paper/* (list + get + search), /api/issuer/* (nonce freshness + one-time-use + credential issue happy-path + unknown-nonce rejection), /api/verifier/verify (happy path + mangled/truncated), /api/mdoc/* (issue + verify + engagement + CBOR tag validation), /api/trust/* (CA chain 3-level + persistence + LOTL parse), /api/compliance/* (metrics + hash-chained audit-log + verify + AI-Act transparency + DSA PDF + GDPR erasure of non-existent subject), /api/country/* (11-country list with 4 real + 7 stubs, EU verify happy-path, PT stub 'not yet wired', unknown-country 404), /api/hub/repos (>=10 OSS entries), and /api/.well-known/openid-credential-issuer + /api/.well-known/jwks.json (with EC/P-256 signer key matching). Result: 34/34 passing after fixing one real backend bug (mDoc engagement).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/mdoc/engagement/{id}",
+        "issue": "Returned HTTP 500 (Pydantic ValidationError: session_key_public_jwk field required) because services/mdoc_engagement.create_engagement() persisted the document without the session_key_public_jwk field even though EngagementResponse requires it. FIXED by testing agent: added session_key_public_jwk to the insert_one payload in /app/backend/services/mdoc_engagement.py. Re-tested and now returns 200 with identical device_engagement_hex.",
+        "resolution": "fixed"
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Consider clarifying /api/verifier/verify contract: when caller supplies audience or nonce, verifier requires KB-JWT (HBI) which the raw issued credential does not contain. Current behavior is correct per SD-JWT VC spec, but callers should either omit audience/nonce (issuer-verify mode) or send a real presentation with appended KB-JWT (verifier mode). Consider adding an explicit mode flag or documenting this in the OpenAPI description to avoid confusion.",
+    "Country /verify EU adapter has the same audience/nonce -> KB-JWT strict-mode behavior. Same recommendation."
+  ],
+  "critical_code_review_comments": [
+    "services/mdoc_engagement.py: create_engagement() persisted an incomplete document — the response model field session_key_public_jwk was returned inline from the create call but not stored, causing every subsequent GET /api/mdoc/engagement/{id} to 500. This kind of drift between the ORM/insert payload and the response Pydantic model is a recurring risk; a shared TypedDict or explicit .model_dump() would prevent it. (Fixed in this iteration.)",
+    "routers/issuer.py issue_credential handler raises HTTPException(400, dict) — FastAPI wraps the dict inside a 'detail' key, so clients see {'detail': {'error': 'invalid_proof', 'reasons': [...]}}. Documented is fine, but consider a stable ErrorResponse pydantic model for machine-readable errors instead of nested dicts.",
+    "services/sd_jwt_verifier.py always requires KB-JWT when either audience OR nonce is supplied, even if the caller wants to inspect the raw issuer signed credential. Consider separating 'credential verification' from 'presentation verification' with two endpoints or an explicit boolean flag.",
+    "routers/compliance.py metrics(): active_loa_* counts filter issued_credentials by loa field but the issuer never writes a 'loa' field to issued_credentials (see routers/issuer.py insert_one). All three counters therefore always return 0. This is misleading — either compute LoA at issuance time (heuristic based on vct) and persist it, or drop these fields.",
+    "routers/paper.py search_chapters requires the mongo text index on paper_chapters; ensure lifespan bootstrap creates it (verified working — tests pass), and add an explicit test for 'q' shorter than 2 chars → 422 for robustness.",
+    "services/mdoc_issuer.py hard-codes P-256 key coordinate length to 32 bytes without padding checks — if a jwk provides fewer bytes (leading zero stripped) the resulting COSE_Key will be malformed. Consider using int.to_bytes on the decoded big-endian integer for consistent padding.",
+    "hub.py: OSSRepo list is hard-coded in a router module. Extracting to a JSON/YAML seed under services/ would ease editing and testing.",
+    "No auth on any endpoint including /api/compliance/gdpr/erasure and /api/compliance/audit-log — even though this is documented ('all endpoints public') a rate-limit / API key would be sensible for GDPR erasure in production."
+  ],
+  "updated_files": [
+    "/app/backend/services/mdoc_engagement.py (persist session_key_public_jwk on insert)",
+    "/app/backend/tests/backend_test.py (new file — 34 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "N/A (skipped per request)"},
+  "seed_data_creation": "None required — server lifespan seeds paper chapters and provisions CA on startup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend base URL: REACT_APP_BACKEND_URL=https://honor-registry-ai.preview.emergentagent.com. Proof-JWT audience MUST equal ISSUER_URL=https://honor-registry-ai.preview.emergentagent.com (from backend/.env), not the frontend backend URL. The two hostnames resolve to the same K8s ingress. The SD-JWT verifier (services/sd_jwt_verifier.py) enforces KB-JWT strictly whenever audience OR nonce is passed on /verifier/verify or /country/verify — for happy-path 'verify freshly issued credential', pass presentation only (no audience, no nonce). CBOR tag 0 in mDoc is auto-decoded to datetime by cbor2 — use byte scan (0xc0, 0xd2, 0xd8 0x18) instead of tag_hook. Engagement bug (missing session_key_public_jwk in insert) is fixed. Run: pytest /app/backend/tests/backend_test.py -v.",
+  "rca of the issue": "GET /api/mdoc/engagement/{id} 500 → services/mdoc_engagement.create_engagement returned a full dict to the router (including session_key_public_jwk) but persisted only 4 of the 5 fields via insert_one(). Router get_engagement() calls collection.find_one and hands the doc to EngagementResponse(**doc); Pydantic v2 raised ValidationError missing session_key_public_jwk. FastAPI mapped that to 500. Fix: include session_key_public_jwk in the insert payload. Repro: POST /api/mdoc/engagement → capture engagement_id → GET /api/mdoc/engagement/{id} — before fix returned 500, after fix returns 200 with identical device_engagement_hex."
+}

@@ -1,0 +1,69 @@
+# Stalwart Mail-Server — Reference configuration for EUDI-Nexus JMAP bridge
+#
+# This file is NOT used at runtime in the Emergent-hosted build (Kubernetes ingress
+# has no room for a Stalwart sidecar). It is shipped as ground-truth documentation
+# for on-prem deployments per Sprint 6 (Phase 3B) of the master build plan.
+#
+# Stalwart v0.9+ syntax.
+
+[server]
+hostname = "eudi-mail.example.eu"
+
+[server.listener."imaps"]
+protocol = "imap"
+bind = ["[::]:993"]
+tls.implicit = true
+
+[server.listener."smtps"]
+protocol = "smtp"
+bind = ["[::]:465"]
+tls.implicit = true
+
+[server.listener."jmap"]
+protocol = "jmap"
+bind = ["[::]:8080"]
+url = "https://eudi-mail.example.eu"
+
+[server.tls]
+enable = true
+certificate = "default"
+
+# --- Storage --------------------------------------------------------------
+
+[storage]
+directory = "eudi-nexus"
+lookup = "eudi-nexus"
+data = "sqlite"
+blob = "fs"
+fts = "sqlite"
+
+# --- Directory: EUDI-Nexus bridge as external authority ------------------
+#
+# All authN decisions are delegated to the EUDI-Nexus bridge. The bridge
+# accepts an SD-JWT VP presentation instead of a password and returns a
+# JMAP-usable session cookie.
+
+[directory."eudi-nexus"]
+type = "external"
+url = "https://eudi-nexus.example.eu/api/jmap/auth"
+timeout = "5s"
+lookup.domains = ["example.eu"]
+
+[directory."eudi-nexus".cache]
+entries = 10_000
+ttl = { positive = "60s", negative = "10s" }
+
+# --- Authentication / access control -------------------------------------
+
+[authentication]
+# reject basic auth entirely — VP-only
+mechanisms = ["plain"]
+allow-plain-text = false
+
+# The Stalwart directory `eudi-nexus` treats the SD-JWT compact serialization as
+# the "password" it forwards to the bridge. The bridge verifies and mints the
+# session cookie which Stalwart then binds to the JMAP request.
+
+[jmap]
+url = "https://eudi-mail.example.eu/jmap"
+push.max-total = 100

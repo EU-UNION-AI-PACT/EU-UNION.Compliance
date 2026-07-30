@@ -1,0 +1,283 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 40% 6%;
+    --foreground: 210 20% 96%;
+    --card: 222 33% 9%;
+    --card-foreground: 210 20% 96%;
+    --popover: 224 40% 6%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 224 40% 6%;
+    --secondary: 217 32% 15%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 217 32% 12%;
+    --muted-foreground: 217 15% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 224 40% 6%;
+    --destructive: 0 63% 46%;
+    --destructive-foreground: 210 20% 96%;
+    --border: 218 20% 18%;
+    --input: 218 20% 15%;
+    --ring: 38 92% 50%;
+    --radius: 0.375rem;
+    --grain: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/></svg>");
+  }
+  .light {
+    --background: 210 30% 98%;
+    --foreground: 224 40% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 40% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 40% 6%;
+    --primary: 38 92% 45%;
+    --primary-foreground: 210 20% 96%;
+    --secondary: 210 15% 92%;
+    --secondary-foreground: 224 40% 6%;
+    --muted: 210 15% 94%;
+    --muted-foreground: 218 12% 40%;
+    --accent: 217 91% 55%;
+    --accent-foreground: 0 0% 100%;
+    --border: 218 15% 85%;
+    --input: 218 15% 90%;
+    --ring: 38 92% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    background: hsl(var(--background));
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #090d16;
+  }
+  code, pre, .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .font-serif {
+    font-family: "IBM Plex Serif", "EB Garamond", ui-serif, Georgia, serif;
+  }
+  ::selection {
+    background: rgba(245, 158, 11, 0.35);
+    color: white;
+  }
+}
+
+/* Cyberpunk-Institutional grain overlay */
+.grain-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--grain);
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Amber glow for critical markers */
+.glow-amber {
+  box-shadow: 0 0 24px -8px rgba(245, 158, 11, 0.65);
+}
+.glow-blue {
+  box-shadow: 0 0 24px -8px rgba(59, 130, 246, 0.65);
+}
+.glow-emerald {
+  box-shadow: 0 0 24px -8px rgba(16, 185, 129, 0.6);
+}
+
+/* Tracing beam for active cards */
+.trace-beam {
+  position: relative;
+  overflow: hidden;
+}
+.trace-beam::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+.trace-beam:hover::after,
+.trace-beam[data-active="true"]::after {
+  opacity: 1;
+}
+
+/* Focus ring — electric blue */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f19;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2a3a;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+/* Mermaid dark theme container */
+.mermaid-wrap {
+  padding: 1.5rem;
+  background: rgba(9, 13, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+.mermaid-wrap svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Markdown / prose overrides */
+.paper-prose {
+  font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: #d1d5db;
+}
+.paper-prose h2 {
+  font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: 1.65rem;
+  color: #ffffff;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.01em;
+}
+.paper-prose h3 {
+  font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: #ffffff;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.paper-prose p {
+  margin-bottom: 1.15rem;
+}
+.paper-prose code {
+  background: rgba(59, 130, 246, 0.09);
+  color: #93c5fd;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.88em;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+.paper-prose pre {
+  background: #050a12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-size: 0.85rem;
+}
+.paper-prose pre code {
+  background: transparent;
+  color: #cbd5e1;
+  border: none;
+  padding: 0;
+}
+.paper-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.94rem;
+  font-family: "Inter", sans-serif;
+}
+.paper-prose th {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  background: rgba(245, 158, 11, 0.06);
+  color: #f59e0b;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+.paper-prose td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+.paper-prose blockquote {
+  border-left: 3px solid #f59e0b;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  color: #9ca3af;
+  font-style: italic;
+}
+.paper-prose ul, .paper-prose ol {
+  padding-left: 1.6rem;
+  margin: 1rem 0;
+}
+.paper-prose li {
+  margin-bottom: 0.4rem;
+}
+.paper-prose a {
+  color: #60a5fa;
+  text-decoration: underline;
+  text-decoration-color: rgba(96, 165, 250, 0.4);
+  text-underline-offset: 3px;
+}
+.paper-prose a:hover {
+  color: #93c5fd;
+}
+
+/* Bento-tight grid for cockpit */
+.bento-tight {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+/* Data-testid selectable but visually invisible marker */
+[data-active="true"] {
+  --amber-active: 1;
+}
+
+/* PNIA memorial candle flame */
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1) rotate(-1deg); opacity: 0.95; }
+  25% { transform: scale(1.06, 0.96) rotate(1deg); opacity: 1; }
+  50% { transform: scale(0.96, 1.05) rotate(-1deg); opacity: 0.9; }
+  75% { transform: scale(1.03, 0.98) rotate(1deg); opacity: 1; }
+}
+.candle-flame {
+  animation: flame-flicker 1.6s ease-in-out infinite;
+  transform-origin: bottom center;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.65));
+}
+@keyframes candle-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.6; }
+}
+.candle-glow { animation: candle-glow 1.6s ease-in-out infinite; }

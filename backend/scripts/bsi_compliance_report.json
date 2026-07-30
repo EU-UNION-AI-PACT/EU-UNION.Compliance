@@ -1,0 +1,31 @@
+{
+    "timestamp": "2026-07-29T18:58:38.828714Z",
+    "status": "PASS",
+    "checks": [
+        {
+            "check": "LoA",
+            "status": "PASS",
+            "detail": "Level of Assurance ist HIGH (konform)."
+        },
+        {
+            "check": "ID-Hashing",
+            "status": "PASS",
+            "detail": "Algorithmus SHA-256 ist EU-ARF konform."
+        },
+        {
+            "check": "Kryptografie (Signatur)",
+            "status": "PASS",
+            "detail": "Signatur-Algorithmus ES256 zugelassen."
+        },
+        {
+            "check": "Protokolle",
+            "status": "PASS",
+            "detail": "Alle erforderlichen EUDI-Protokolle (OIDC4VCI/VP) implementiert."
+        },
+        {
+            "check": "Multi-Country Adapter",
+            "status": "PASS",
+            "detail": "Cross-Border aktiviert. 2 Trusted Lists verkn\u00fcpft."
+        }
+    ]
+}

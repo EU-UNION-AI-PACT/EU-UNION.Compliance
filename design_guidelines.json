@@ -1,0 +1,98 @@
+{
+  "theme": "Cyberpunk-Institutional",
+  "modes": {
+    "primary": "dark",
+    "toggle": true
+  },
+  "colors": {
+    "background": "#090d16",
+    "base": "#090d16",
+    "accent_primary": "#f59e0b",
+    "tech_layer": "#3b82f6",
+    "success": "#10b981",
+    "text_primary": "#ffffff",
+    "text_secondary": "#9ca3af",
+    "border_subtle": "rgba(255, 255, 255, 0.1)",
+    "surface_glass": "rgba(9, 13, 22, 0.6)"
+  },
+  "typography": {
+    "ui_sans": "Inter",
+    "document_serif": "IBM Plex Serif",
+    "code_mono": "JetBrains Mono",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter text-white",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight text-white",
+      "h3": "text-xl sm:text-2xl font-medium tracking-tight text-white",
+      "body_ui": "text-base font-sans text-gray-300",
+      "body_paper": "text-lg font-serif leading-relaxed text-gray-200",
+      "code": "text-sm font-mono text-blue-400 bg-gray-900/50 p-4 rounded-md border border-gray-800",
+      "overline": "text-xs uppercase tracking-[0.2em] text-amber-500 font-semibold"
+    }
+  },
+  "visual_enhancers": {
+    "grain": "Apply a subtle SVG noise filter overlay across the main app background to achieve 'Cyberpunk-Institutional Grain'. Blend mode: overlay, opacity: 2-5%.",
+    "tracing_beam": "For active or selected cards/panels, use a 1px border that animates or glows with Amber (#f59e0b) to signify activity.",
+    "glassmorphism": "For sticky headers and floating navs, use backdrop-blur-xl with a highly saturated dark background (bg-[#090d16]/60) and a 1px bottom border of border-white/10.",
+    "glows": "Subtle box-shadow glows (blur 16px to 32px) behind critical Amber/Electric-Blue icons or status indicators. Do not overuse."
+  },
+  "layouts": {
+    "general": "Left-aligned dominant structure. Do not center-align the main application flow. Use asymmetrical grids (e.g., col-span-8 for content, col-span-4 for metadata).",
+    "concept_paper_portal": "Wide asymmetrical layout. Main content area uses massive whitespace (p-12 to p-24) with IBM Plex Serif. Sidebar for Chapter Navigation (MDX) and Bookmarks uses Inter. Left-aligned typography.",
+    "compliance_cockpit": "High-density Bento Grid layout (tight gap-4). Data-heavy tables and densely packed info-panels. No excessive whitespace here.",
+    "reference_sandbox": "Split-pane layout. Left: Interactive form/settings. Right: Code/CBOR Viewer in JetBrains Mono."
+  },
+  "components": {
+    "buttons": "Sharp edges or extremely slight radius (rounded-sm). Dark background with electric-blue or amber 1px borders. High contrast on hover (e.g., hover:bg-amber-500 hover:text-black).",
+    "cards": "Flat, dark surfaces. No heavy drop-shadows. Rely on 1px inner borders (border-white/5). Hover state: slightly lifts with an amber or blue tracing beam border.",
+    "tables": "Dense rows, left-aligned text. Use JetBrains Mono for cryptographic hashes (SHA-256) and logs. Distinct visual states for LoA levels (Low/Substantial/High).",
+    "navigation": "Sticky left sidebar or top-nav with active chapter highlighting. Bookmarks use subtle amber indicators.",
+    "diagrams": "Mermaid.js rendered in Dark Theme. Custom SVG map for Country Federation with glowing nodes for member states."
+  },
+  "accessibility": {
+    "contrast": "Ensure all text against #090d16 meets at least AA standard (4.5:1). Amber (#f59e0b) must be used carefully against white text.",
+    "focus": "Focus states should use a 2px solid Electric-Blue (#3b82f6) outline with a 2px offset.",
+    "test_ids": "All interactive elements MUST include a data-testid attribute formatted as kebab-case-role (e.g., data-testid='verify-sd-jwt-button')."
+  },
+  "image_urls": [
+    {
+      "category": "Hero - Landing / Executive Summary",
+      "url": "https://images.unsplash.com/photo-1579567761406-4684ee0c75b6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwzfHxjeWJlcnB1bmslMjB0ZWNobm9sb2d5JTIwbm9kZSUyMG5ldHdvcmslMjBhYnN0cmFjdHxlbnwwfHx8fDE3ODUzMTI3MDN8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract blue and white tech network art for main landing page. Fits the EU-Sternenkranz tech motif."
+    },
+    {
+      "category": "Hero - Compliance Shield",
+      "url": "https://images.unsplash.com/photo-1744324480866-1794a1bf193c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwzfHxjeWJlcnB1bmslMjBnbG93aW5nJTIwc2VjdXJpdHklMjBzaGllbGQlMjBuZXR3b3JrfGVufDB8fHx8MTc4NTMxMjcwMnww&ixlib=rb-4.1.0&q=85",
+      "description": "Glowing brain/node inside a geometric structure representing AI Act / GDPR Compliance Shield."
+    },
+    {
+      "category": "Hero - Trust-Pipeline Viewer",
+      "url": "https://images.unsplash.com/photo-1597733336794-12d05021d510?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMGZpYmVyJTIwb3B0aWMlMjBkYXRhJTIwcGlwZWxpbmUlMjBnbG93aW5nfGVufDB8fHx8MTc4NTMxMjcwM3ww&ixlib=rb-4.1.0&q=85",
+      "description": "Purple and blue fiber optic data pipeline representing X.509 chains and LOTL parsers."
+    },
+    {
+      "category": "Hero - Cross-Border / Country Federation",
+      "url": "https://images.unsplash.com/photo-1733195296321-b99d129b09cd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwyfHxkaWdpdGFsJTIwd29ybGQlMjBtYXAlMjBnbG93aW5nJTIwY29ubmVjdGlvbnMlMjBub2Rlc3xlbnwwfHx8fDE3ODUzMTI3MDN8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Close up of a blue and black globe representing the Multi-Country Federation Map."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Use Shadcn/UI for components, but strip excessive drop shadows and rounded corners. Keep it sharp and institutional.",
+    "Do not use generic centering. Keep layouts left-aligned, establishing an academic, paper-like reading flow.",
+    "Integrate lucide-react icons exclusively. NO EMOJIS.",
+    "Set up primary routing for: Landing, Concept Paper Portal, Reference Sandbox, Compliance Cockpit, Developer Hub, Trust-Pipeline Viewer.",
+    "Implement a subtle grain overlay using an SVG filter or pure CSS noise.",
+    "Implement Mermaid.js with its dark theme configuration for architectural diagrams.",
+    "Ensure all fonts are loaded correctly (Inter, IBM Plex Serif, JetBrains Mono) and applied globally to the respective semantic tags.",
+    "Ensure robust data-testid coverage for all buttons, toggles, and form inputs.",
+    "Use ONLY .jsx/.js files for React components, aligning with standard JavaScript implementation rather than TypeScript.",
+    "NEVER use fully transparent backgrounds for dropdowns, sticky headers, or modals. Always use #090d16 with high opacity or backdrop-blur."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not apply `transition: all` to avoid breaking specific transforms.",
+    "Do not center-align the main app container (.App { text-align: center; } is strictly forbidden).",
+    "Build custom components matching existing Shadcn/UI patterns.",
+    "Use 'sonner' for toast notifications, configured to match the dark cyberpunk aesthetic.",
+    "Add micro-animations on all interactive elements (hover, focus, active states).",
+    "Do NOT use placeholder image URLs. Use the provided Unsplash URLs."
+  ]
+}
