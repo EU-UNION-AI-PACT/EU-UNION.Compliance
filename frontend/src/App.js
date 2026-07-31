@@ -22,6 +22,7 @@ import Blueprint from "./pages/Blueprint";
 import { AuthProvider, AuthCallback } from "./lib/auth";
 import "./i18n";
 import "./App.css";
+import "./pnia_iter6.css";
 
 function AppRouter() {
   const location = useLocation();

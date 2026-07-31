@@ -464,6 +464,7 @@ export default function AdminPortal() {
     { id: "downgrade", label: isDE ? "AI Act Art. 14 Aufsicht" : "AI Act Art. 14 Oversight", icon: AlertTriangle, testId: "admin-tab-downgrade" },
     { id: "gdpr", label: "GDPR Art. 17", icon: Trash2, testId: "admin-tab-gdpr" },
     { id: "sync", label: "GitHub Live-Sync", icon: GitBranch, testId: "admin-tab-sync" },
+    { id: "rules", label: isDE ? "Custom Rules" : "Custom Rules", icon: ShieldAlert, testId: "admin-tab-rules" },
   ];
 
   return (
@@ -515,6 +516,231 @@ export default function AdminPortal() {
       {tab === "downgrade" && <DowngradePanel />}
       {tab === "gdpr" && <GdprTab />}
       {tab === "sync" && <SyncTab />}
+      {tab === "rules" && <CustomRulesTab />}
     </div>
   );
 }
+
+// --------------------------------------------------------------------------- //
+// Custom Rule Editor tab                                                      //
+// --------------------------------------------------------------------------- //
+function CustomRulesTab() {
+  const [frameworks, setFrameworks] = React.useState([]);
+  const [selected, setSelected] = React.useState("GDPR");
+  const [rules, setRules] = React.useState([]);
+  const [allRules, setAllRules] = React.useState([]);
+  const [byFw, setByFw] = React.useState({});
+  const [field, setField] = React.useState("");
+  const [hint, setHint] = React.useState("");
+  const [severity, setSeverity] = React.useState("REQUIRED");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState(null);
+
+  const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
+  const tokenHeader = () => {
+    const t = window.localStorage.getItem("eudi_session_token");
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  };
+
+  const loadFrameworks = async () => {
+    try {
+      const j = await fetch(`${BE}/api/validate/frameworks?limit=500`).then((r) => r.json());
+      setFrameworks(j.frameworks || []);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  const loadAll = async () => {
+    try {
+      const j = await fetch(`${BE}/api/validate/custom-rules`, { headers: tokenHeader() });
+      if (!j.ok) throw new Error(`HTTP ${j.status}`);
+      const data = await j.json();
+      setAllRules(data.rules || []);
+      setByFw(data.by_framework || {});
+    } catch (e) {
+      setError(`load: ${e.message}`);
+    }
+  };
+  const loadRules = async (code) => {
+    try {
+      const j = await fetch(`${BE}/api/validate/custom-rules/${encodeURIComponent(code)}`).then((r) => r.json());
+      setRules(j.rules || []);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  React.useEffect(() => {
+    loadFrameworks();
+    loadAll();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  React.useEffect(() => {
+    if (selected) loadRules(selected);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
+  const addRule = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${BE}/api/validate/custom-rules/${encodeURIComponent(selected)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...tokenHeader() },
+          body: JSON.stringify({ field, hint, severity }),
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setField("");
+      setHint("");
+      setSeverity("REQUIRED");
+      await Promise.all([loadRules(selected), loadAll()]);
+    } catch (e) {
+      setError(`add: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const deleteRule = async (id) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${BE}/api/validate/custom-rules/${id}`, {
+        method: "DELETE",
+        headers: tokenHeader(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await Promise.all([loadRules(selected), loadAll()]);
+    } catch (e) {
+      setError(`del: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] gap-4" data-testid="custom-rules-tab">
+      <div className="border border-white/10 bg-[#0a0f19]/60 rounded-md p-3">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-2">
+          Frameworks · {frameworks.length}
+        </div>
+        <div className="max-h-[520px] overflow-y-auto space-y-1">
+          {frameworks.map((f) => (
+            <button
+              key={f.code}
+              data-testid={`rules-pick-${f.code}`}
+              onClick={() => setSelected(f.code)}
+              className={`w-full text-left px-2 py-1.5 text-[11px] font-mono flex items-center justify-between rounded hover:bg-white/5 ${
+                selected === f.code ? "bg-amber-500/10 text-amber-300" : "text-slate-300"
+              }`}
+            >
+              <span className="truncate">{f.code}</span>
+              {byFw[f.code.toUpperCase()] > 0 && (
+                <span className="ml-2 text-[9px] text-emerald-400">
+                  +{byFw[f.code.toUpperCase()]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="border border-white/10 bg-[#0a0f19]/60 rounded-md p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <ShieldAlert size={14} className="text-amber-400" />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-300">
+              Add rule to {selected}
+            </span>
+            {error && (
+              <span className="ml-auto text-[10px] font-mono text-red-400">
+                {error}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_140px_120px] gap-2">
+            <input
+              value={field}
+              onChange={(e) => setField(e.target.value)}
+              placeholder="field (e.g. dpia_reference)"
+              data-testid="rule-field"
+              className="px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-emerald-300 outline-none focus:border-amber-500/60"
+            />
+            <input
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+              placeholder="hint / statement of reasons"
+              data-testid="rule-hint"
+              className="px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-slate-200 outline-none focus:border-amber-500/60"
+            />
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              data-testid="rule-severity"
+              className="px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-slate-200 outline-none focus:border-amber-500/60"
+            >
+              <option value="REQUIRED">REQUIRED</option>
+              <option value="RECOMMENDED">RECOMMENDED</option>
+            </select>
+            <button
+              onClick={addRule}
+              disabled={busy || !field || !hint}
+              data-testid="rule-add"
+              className="px-3 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-mono text-[11px] uppercase tracking-wider rounded"
+            >
+              {busy ? "…" : "add"}
+            </button>
+          </div>
+        </div>
+
+        <div className="border border-white/10 bg-[#0a0f19]/60 rounded-md">
+          <div className="p-3 border-b border-white/10 font-mono text-[11px] uppercase tracking-wider text-slate-300">
+            {selected} · custom rules ({rules.length})
+          </div>
+          {rules.length === 0 && (
+            <div className="p-6 text-center text-[11px] font-mono text-slate-500">
+              no custom rules for {selected} — add one above.
+            </div>
+          )}
+          {rules.map((r) => (
+            <div
+              key={r.id}
+              data-testid={`rule-row-${r.id}`}
+              className="p-3 border-b border-white/5 flex items-start gap-3"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-emerald-300">
+                    {r.field}
+                  </span>
+                  <span
+                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+                      r.severity === "REQUIRED"
+                        ? "bg-red-500/15 text-red-300 border border-red-500/30"
+                        : "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                    }`}
+                  >
+                    {r.severity}
+                  </span>
+                  <span className="ml-auto text-[9px] font-mono text-slate-500">
+                    by {r.created_by}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">{r.hint}</div>
+              </div>
+              <button
+                onClick={() => deleteRule(r.id)}
+                data-testid={`rule-del-${r.id}`}
+                className="p-1 text-slate-500 hover:text-red-400 border border-white/10 hover:border-red-500/40 rounded"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+

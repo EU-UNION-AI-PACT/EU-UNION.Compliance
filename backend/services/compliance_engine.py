@@ -215,12 +215,18 @@ def _describe_rule(r: Rule) -> dict[str, str]:
 
 
 def validate(
-    payload: dict[str, Any], framework_code: str
+    payload: dict[str, Any],
+    framework_code: str,
+    extra_rules: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Stateless: given a payload and a framework code, return a Pass/Fail report.
 
     The result never leaks the input payload contents — only the *field names*
     and evaluation outcome are echoed back (data-minimisation friendly).
+
+    ``extra_rules`` — optional list of dicts ``{field,hint,severity}`` that
+    admins can inject dynamically (Custom Rule Editor). They are merged on top
+    of the builtin rules for this single call and never persisted here.
     """
     fw = get_framework(framework_code)
     if fw is None:
@@ -232,6 +238,22 @@ def validate(
         }
 
     rules, mode = _rules_for(framework_code)
+    if extra_rules:
+        extra_objs: list[Rule] = []
+        for er in extra_rules:
+            try:
+                extra_objs.append(
+                    Rule(
+                        field=er["field"],
+                        hint=er.get("hint", ""),
+                        severity=er.get("severity", "REQUIRED"),
+                    )
+                )
+            except Exception:
+                continue
+        if extra_objs:
+            rules = list(rules) + extra_objs
+            mode = f"{mode}+CUSTOM({len(extra_objs)})"
     covered: list[dict[str, str]] = []
     missing: list[dict[str, str]] = []
     suggestions: list[dict[str, str]] = []

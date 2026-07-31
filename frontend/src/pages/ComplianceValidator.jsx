@@ -13,7 +13,12 @@ import {
   Trash2,
   Filter,
   Server,
+  Volume2,
+  VolumeX,
+  FileDown,
+  ChevronRight,
 } from "lucide-react";
+import FrameworkDrawer from "../components/FrameworkDrawer";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL ||
@@ -72,6 +77,47 @@ export default function ComplianceValidator() {
   const [sseState, setSseState] = useState("connecting"); // connecting|open|closed
   const [error, setError] = useState(null);
   const esRef = useRef(null);
+  const [drawerCode, setDrawerCode] = useState(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const audioCtxRef = useRef(null);
+  const soundOnRef = useRef(true);
+  useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
+
+  // ---- Web Audio API pling (no external file) ----
+  const playTone = (status) => {
+    if (!soundOnRef.current) return;
+    try {
+      if (!audioCtxRef.current) {
+        // eslint-disable-next-line no-undef
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtxRef.current = new AC();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const isFail = status === "FAIL";
+      osc.type = "sine";
+      // soft, professional plings — different pitch per outcome
+      const freq = isFail ? 220 : status === "PASS" ? 880 : 660;
+      osc.frequency.setValueAtTime(freq, now);
+      if (isFail) osc.frequency.linearRampToValueAtTime(180, now + 0.35);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.14, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    } catch {
+      /* ignore */
+    }
+  };
 
   // ---- initial data ----
   useEffect(() => {
@@ -101,7 +147,10 @@ export default function ComplianceValidator() {
     es.addEventListener("validation", (e) => {
       try {
         const evt = JSON.parse(e.data);
-        setTicker((prev) => [{ ...evt, _rx: Date.now() }, ...prev].slice(0, 50));
+        playTone(evt.status);
+        setTicker((prev) =>
+          [{ ...evt, _rx: Date.now(), _pulse: evt.status === "FAIL" }, ...prev].slice(0, 50)
+        );
       } catch {
         /* ignore */
       }
@@ -175,6 +224,33 @@ export default function ComplianceValidator() {
   };
 
   const clearTicker = () => setTicker([]);
+
+  const downloadPdf = async () => {
+    if (!report) return;
+    setPdfBusy(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/validate/report.pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const code = report?.framework?.code || "framework";
+      a.download = `pnia-compliance-${code}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      setError(`PDF export failed: ${e.message}`);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-10 text-slate-200">
@@ -280,34 +356,46 @@ export default function ComplianceValidator() {
             </div>
             <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
               {filteredFrameworks.slice(0, 200).map((f) => (
-                <button
+                <div
                   key={f.code + f.name}
-                  data-testid={`fw-row-${f.code}`}
-                  onClick={() => setSelectedFramework(f.code)}
-                  className={`w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-white/5 transition-colors ${
+                  className={`w-full flex items-center gap-3 hover:bg-white/5 transition-colors ${
                     selectedFramework === f.code ? "bg-amber-500/10" : ""
                   }`}
                 >
-                  <span
-                    className={`inline-block w-1 h-6 rounded-full ${
-                      specialised.has(f.code.toUpperCase())
-                        ? "bg-amber-500"
-                        : "bg-slate-600"
-                    }`}
-                  />
-                  <span className="font-mono text-[11px] text-amber-400 w-24 truncate">
-                    {f.code}
-                  </span>
-                  <span className="flex-1 text-[12px] text-slate-300 truncate">
-                    {f.name}
-                  </span>
-                  <span className="hidden md:inline text-[10px] font-mono text-slate-500 w-28 text-right truncate">
-                    {f.regulator}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500 w-24 text-right">
-                    {f.category}
-                  </span>
-                </button>
+                  <button
+                    data-testid={`fw-row-${f.code}`}
+                    onClick={() => setSelectedFramework(f.code)}
+                    className="flex-1 text-left px-4 py-2 flex items-center gap-3"
+                  >
+                    <span
+                      className={`inline-block w-1 h-6 rounded-full ${
+                        specialised.has(f.code.toUpperCase())
+                          ? "bg-amber-500"
+                          : "bg-slate-600"
+                      }`}
+                    />
+                    <span className="font-mono text-[11px] text-amber-400 w-24 truncate">
+                      {f.code}
+                    </span>
+                    <span className="flex-1 text-[12px] text-slate-300 truncate">
+                      {f.name}
+                    </span>
+                    <span className="hidden md:inline text-[10px] font-mono text-slate-500 w-28 text-right truncate">
+                      {f.regulator}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 w-24 text-right">
+                      {f.category}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setDrawerCode(f.code)}
+                    data-testid={`fw-detail-${f.code}`}
+                    title="Open detail drawer"
+                    className="pr-3 py-2 text-slate-500 hover:text-amber-400"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               ))}
               {filteredFrameworks.length === 0 && (
                 <div className="p-6 text-center text-slate-500 text-sm">
@@ -384,7 +472,17 @@ export default function ComplianceValidator() {
                 <span className="text-[11px] font-mono text-slate-400">
                   score {report.score}%
                 </span>
-                <span className="text-[10px] font-mono text-slate-500 ml-auto">
+                <button
+                  onClick={downloadPdf}
+                  disabled={pdfBusy}
+                  data-testid="btn-download-pdf"
+                  className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 border border-amber-500/50 text-amber-400 hover:bg-amber-500 hover:text-black text-[10px] font-mono uppercase tracking-wider rounded"
+                  title="Signed A4 PDF · ES256 JWS"
+                >
+                  <FileDown size={11} />
+                  {pdfBusy ? "signing…" : "signed PDF"}
+                </button>
+                <span className="text-[10px] font-mono text-slate-500 basis-full mt-1">
                   {report.mode} · {report.engine}
                 </span>
               </div>
@@ -485,9 +583,17 @@ export default function ComplianceValidator() {
               Live Ticker (ephemeral)
             </span>
             <button
+              onClick={() => setSoundOn((s) => !s)}
+              data-testid="btn-toggle-sound"
+              title={soundOn ? "Mute pling" : "Unmute pling"}
+              className="ml-auto p-1 rounded text-slate-400 hover:text-amber-400 border border-white/10 hover:border-amber-500/50"
+            >
+              {soundOn ? <Volume2 size={11} /> : <VolumeX size={11} />}
+            </button>
+            <button
               onClick={clearTicker}
               data-testid="btn-clear-ticker"
-              className="ml-auto text-[10px] font-mono uppercase tracking-wider text-slate-500 hover:text-red-400 flex items-center gap-1"
+              className="text-[10px] font-mono uppercase tracking-wider text-slate-500 hover:text-red-400 flex items-center gap-1"
             >
               <Trash2 size={11} /> clear
             </button>
@@ -503,7 +609,9 @@ export default function ComplianceValidator() {
               <div
                 key={idx}
                 data-testid={`ticker-row-${idx}`}
-                className="border border-white/5 rounded p-2 hover:border-amber-500/30 transition-colors"
+                className={`border border-white/5 rounded p-2 hover:border-amber-500/30 transition-colors ${
+                  evt._pulse ? "pnia-fail-pulse" : ""
+                }`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <StatusPill status={evt.status} />
@@ -549,6 +657,10 @@ export default function ComplianceValidator() {
           detail="Every report carries a statement of reasons (hint field per rule) — Art. 17 DSA style."
         />
       </div>
+      {/* --------- Framework Detail Drawer --------- */}
+      {drawerCode && (
+        <FrameworkDrawer code={drawerCode} onClose={() => setDrawerCode(null)} />
+      )}
     </div>
   );
 }

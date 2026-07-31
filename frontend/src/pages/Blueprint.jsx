@@ -8,7 +8,10 @@ import {
   ShieldCheck,
   Info,
   Loader2,
+  Milestone,
+  Clock,
 } from "lucide-react";
+import Iso3DStack from "../components/Iso3DStack";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL ||
@@ -56,19 +59,68 @@ export default function Blueprint() {
 
   return (
     <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-10 text-slate-200">
-      {/* ---------- Header ---------- */}
-      <div className="border-b border-white/10 pb-6">
-        <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-500/80 mb-2">
-          Architektur-Paper · Version {meta.version} · Stand {meta.asOf}
-        </div>
-        <h1 className="text-3xl lg:text-4xl font-serif tracking-tight">
-          {meta.title}
-        </h1>
-        <p className="text-slate-400 mt-3 max-w-4xl text-sm leading-relaxed">
-          {meta.subtitle}
-        </p>
-        <div className="text-[11px] font-mono text-slate-500 mt-4">
-          {meta.initiative} · <span className="text-amber-400">{meta.author}</span>
+      {/* ---------- Header w/ background video + 3D preview ---------- */}
+      <div className="relative border border-white/10 rounded-lg overflow-hidden mb-10">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-25"
+          aria-hidden="true"
+          data-testid="blueprint-hero-video"
+        >
+          <source
+            src="https://cdn.pixabay.com/video/2020/08/21/47717-451812833_large.mp4"
+            type="video/mp4"
+          />
+        </video>
+        <div className="absolute inset-0 pnia-video-overlay" />
+        <div className="relative grid grid-cols-12 gap-6 p-6 lg:p-10">
+          <div className="col-span-12 lg:col-span-7">
+            <div className="text-[10px] font-mono uppercase tracking-[0.28em] text-amber-500/90 mb-2">
+              Architektur-Paper · Version {meta.version} · Stand {meta.asOf}
+            </div>
+            <h1 className="text-3xl lg:text-5xl font-serif tracking-tight text-white leading-tight">
+              {meta.title}
+            </h1>
+            <p className="text-slate-300 mt-4 max-w-3xl text-sm leading-relaxed">
+              {meta.subtitle}
+            </p>
+            <div className="text-[11px] font-mono text-slate-400 mt-4">
+              {meta.initiative} ·{" "}
+              <span className="text-amber-400">{meta.author}</span>
+            </div>
+            <div className="mt-6 grid grid-cols-3 lg:grid-cols-5 gap-3 max-w-2xl">
+              {[
+                { k: "layers", v: layers.length, l: "Ebenen" },
+                { k: "bb", v: building_blocks.length, l: "Building Blocks" },
+                { k: "stages", v: validation_path.length, l: "Prüfstufen" },
+                { k: "flows", v: data_flows.length, l: "Datenflüsse" },
+                { k: "refs", v: regulatory_refs.length, l: "Bezüge" },
+              ].map((s) => (
+                <div
+                  key={s.k}
+                  className="border border-white/10 bg-black/40 rounded-md p-3"
+                >
+                  <div className="text-2xl font-serif text-amber-400">
+                    {s.v}
+                  </div>
+                  <div className="mt-1 text-[9px] font-mono uppercase tracking-wider text-slate-500">
+                    {s.l}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="hidden lg:block col-span-5">
+            <div className="border border-white/10 bg-black/30 rounded-lg p-2">
+              <Iso3DStack
+                height={340}
+                layers={layers.map((l) => ({ level: l.level, title: l.title }))}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -211,6 +263,16 @@ export default function Blueprint() {
         </div>
       </Section>
 
+      {/* ---------- Section: Architecture Timeline ---------- */}
+      <Section
+        icon={Milestone}
+        title="6. Architektur-Timeline"
+        subtitle="Der Weg von der Referenz-Kryptografie zur zustandslosen Compliance-Engine"
+        count={7}
+      >
+        <ArchitectureTimeline />
+      </Section>
+
       {/* ---------- Section: Compliance rail ---------- */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-3">
         <ComplianceCard
@@ -280,5 +342,81 @@ function ComplianceCard({ icon: Icon, title, detail }) {
       </div>
       <div className="text-[12px] text-slate-400 leading-relaxed">{detail}</div>
     </div>
+  );
+}
+
+const TIMELINE_ITEMS = [
+  {
+    when: "Sprint 1-5 · Q1",
+    title: "Referenz-Kryptografie",
+    detail:
+      "SD-JWT VC (RFC 9215) + ISO 18013-5 mDoc, persistente 3-Level-CA, LOTL-Parser, X.509-Kettenprüfung nach RFC 5280.",
+  },
+  {
+    when: "Sprint 7-9 · Q2",
+    title: "Federation & Compliance-Cockpit",
+    detail:
+      "11 nationale Adapter (EU/FR/IT/CH/PT/SE/NO/DK/IE/BR/US), Emergent Google Auth, LoA-Downgrade-Detection, DSA-PDF-Export.",
+  },
+  {
+    when: "Iteration 3",
+    title: "Admin-Portal & GDPR Art. 17",
+    detail:
+      "Rollenbasiertes Admin-Portal, idempotentes Seeding, tamper-evidenter Erasure-Ledger, GitHub Live-Sync mit LRU-Cache.",
+  },
+  {
+    when: "Iteration 4",
+    title: "PNIA Registry + Concil (CP-01)",
+    detail:
+      "Gedenktafeln (16) + Ehrenplätze, AES-256-GCM PII-Tokenisierung, DSGVO Art. 17 crypto-shred, 4-Säulen Concil Protokoll, CIH-01 Handshake mit Sovereignty Shield.",
+  },
+  {
+    when: "Iteration 5",
+    title: "Stateless Compliance Validator",
+    detail:
+      "251 echte Frameworks aus regula-quest, 8 spezialisierte Rule-Engines (GDPR/DORA/EU AI Act/DMA/DSA/NIS2/eIDAS 2/CRA), Live-Ticker via Server-Sent Events, zero-DB.",
+  },
+  {
+    when: "Iteration 6",
+    title: "Signed PDF + Custom Rules + 3D",
+    detail:
+      "ES256-signierte PDF-Reports, Web-Audio-Pling + FAIL-Pulse, Admin-Rule-Editor, photorealistische CSS-3D-Architektur-Preview, Promo-Video-Loops.",
+  },
+  {
+    when: "Blaupause v1.0",
+    title: "Ganzheitliche Public-Goods-Architektur",
+    detail:
+      "5 Ebenen · 10 Building Blocks · 6 Prüfstufen · 5 Datenflüsse · 9 regulatorische Bezugsrahmen. Referenz-Konzeptwerk, kein Betriebsclaim.",
+  },
+];
+
+function ArchitectureTimeline() {
+  return (
+    <ol className="pnia-timeline-track pl-2 space-y-4">
+      {TIMELINE_ITEMS.map((it, idx) => (
+        <li
+          key={it.when}
+          data-testid={`timeline-${idx}`}
+          className="relative pl-12"
+        >
+          <span className="pnia-timeline-dot absolute left-0 top-1">
+            <Clock size={11} className="text-amber-400" />
+          </span>
+          <div className="border border-white/10 bg-black/40 rounded-md p-4 hover:border-amber-500/40 transition-colors">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-500">
+                {it.when}
+              </span>
+              <span className="font-serif text-[15px] text-white">
+                {it.title}
+              </span>
+            </div>
+            <div className="text-[12px] text-slate-400 leading-relaxed mt-2">
+              {it.detail}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
