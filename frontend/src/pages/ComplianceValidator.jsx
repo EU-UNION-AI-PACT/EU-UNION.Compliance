@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
@@ -91,7 +91,11 @@ export default function ComplianceValidator() {
   }, [soundOn]);
 
   // ---- Web Audio API pling (no external file) ----
-  const playTone = (status) => {
+  // `useCallback` gives this function a stable identity across renders so
+  // it can be safely listed in the SSE effect's dep array without causing
+  // reconnects. It reads `soundOn` via `soundOnRef.current`, so it is
+  // deliberately stale-closure-safe.
+  const playTone = useCallback((status) => {
     if (!soundOnRef.current) return;
     try {
       if (!audioCtxRef.current) {
@@ -122,7 +126,7 @@ export default function ComplianceValidator() {
       // interacted with the page yet — non-fatal.
       console.warn("Ticker tone failed:", err);
     }
-  };
+  }, []);
 
   // ---- initial data ----
   useEffect(() => {
@@ -192,10 +196,10 @@ export default function ComplianceValidator() {
       esRef.current = null;
     };
     // The SSE connection must be established exactly ONCE per mount. `playTone`
-    // is intentionally captured via closure; it reads the latest `soundOn` via
-    // `soundOnRef.current`, so no stale-closure bug exists. Setters (setTicker,
-    // setSseState) are stable per React's contract.
-  }, []);
+    // is a `useCallback` with an empty dep array, so its identity is stable and
+    // listing it here does not cause reconnects. Setters (setTicker, setSseState)
+    // are stable per React's contract. BACKEND_URL is a module-level constant.
+  }, [playTone]);
 
   // ---- categories for the filter dropdown ----
   const categories = useMemo(() => {

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,36 @@ COMPLIANCE_SCRIPT = SCRIPT_DIR / "eu_arf_compliance_check.py"
 # The compliance script writes the BSI report to the backend directory (CWD-relative).
 # Use the same absolute path so the router always finds it regardless of CWD.
 REPORT_FILE = BACKEND_DIR / "bsi_compliance_report.json"
+
+# Timeout (seconds) for the child compliance-check script. Kept tight so a
+# stuck child cannot pin the event loop worker thread.
+_SUBPROCESS_TIMEOUT_SEC = 30
+
+
+def _run_compliance_script_sync(argv: list[str]) -> subprocess.CompletedProcess[bytes]:
+    """
+    Synchronously spawn the compliance-check helper.
+
+    SAFETY NOTES:
+      * `argv` is a fully-formed argument list controlled entirely by the
+        router (sys.executable + server-controlled paths). No user string
+        is ever placed on the command line and no shell is invoked.
+      * `shell=False` is enforced explicitly.
+      * This is `subprocess.run`, NOT Python's builtin `exec()` — there is
+        no dynamic code evaluation happening here.
+    """
+    return subprocess.run(  # noqa: S603  (argv is trusted, see docstring)
+        argv,
+        shell=False,
+        check=False,
+        capture_output=True,
+        timeout=_SUBPROCESS_TIMEOUT_SEC,
+    )
+
+
+async def _run_compliance_script(argv: list[str]) -> subprocess.CompletedProcess[bytes]:
+    """Async wrapper — offloads the blocking child spawn to a worker thread."""
+    return await asyncio.to_thread(_run_compliance_script_sync, argv)
 
 
 class ComplianceRequest(BaseModel):
@@ -69,42 +100,30 @@ async def run_compliance_check(request: ComplianceRequest):
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(request.infrastructure_config, f, indent=2)
 
-        # Skript asynchron ausführen (nicht-blockierend für den Event-Loop)
-        # Pass the report output path as the second argument so the script
-        # writes to a known absolute location.
+        # Skript ausführen (nicht-blockierend für den Event-Loop — spawned in
+        # a worker thread by _run_compliance_script). The argv list is fully
+        # server-controlled and no shell is invoked.
         cmd = [sys.executable, str(COMPLIANCE_SCRIPT)]
         if config_file:
             cmd.append(str(config_file))
             cmd.append(str(REPORT_FILE))
         # If no config file, the script uses its built-in test config
         # and writes to the default "bsi_compliance_report.json" in CWD.
-        # NOTE: this is `asyncio.create_subprocess_exec` — NOT Python's builtin
-        # `exec()`. It spawns a child process with a hard-coded argv list where:
-        #   argv[0] = sys.executable (trusted)
-        #   argv[1] = COMPLIANCE_SCRIPT (server-controlled path, not user input)
-        #   argv[2..3] = config_file / REPORT_FILE (both server-controlled paths)
-        # No shell is invoked, no user string is evaluated. This is safe.
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
         try:
-            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=30)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.wait()
+            completed = await _run_compliance_script(cmd)
+        except subprocess.TimeoutExpired:
             raise HTTPException(status_code=504, detail="Compliance Check Timeout")
 
-        stdout = stdout_b.decode() if stdout_b else ""
-        stderr = stderr_b.decode() if stderr_b else ""
+        stdout = completed.stdout.decode() if completed.stdout else ""
+        stderr = completed.stderr.decode() if completed.stderr else ""
+        returncode = completed.returncode
 
         # Temporäre Datei aufräumen
         if config_file and config_file.exists():
             config_file.unlink()
 
         # Ergebnis parsen
-        if proc.returncode == 0:
+        if returncode == 0:
             # BSI Report lesen
             if REPORT_FILE.exists():
                 with open(REPORT_FILE, 'r', encoding='utf-8') as f:

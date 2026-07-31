@@ -1,6 +1,6 @@
 {
-    "timestamp": "2026-07-30T05:27:45.439928+00:00",
-    "status": "PASS",
+    "timestamp": "2026-07-31T17:43:09.399589+00:00",
+    "status": "WARN",
     "checks": [
         {
             "check": "LoA",
@@ -28,7 +28,7 @@
             "detail": "Cross-Border aktiviert. 11 Trusted Lists verkn\u00fcpft."
         },
         {
-            "check": "11 L\u00e4nder \u00b7 ein Adapter-Interface",
+            "check": "11+ L\u00e4nder \u00b7 ein Adapter-Interface",
             "status": "PASS",
             "detail": "11 L\u00e4nder vollst\u00e4ndig integriert: PT, SE, NO, DK, IE, FR, IT, CH, EU, BR, US"
         },
@@ -41,6 +41,11 @@
             "check": "DSGVO-konformes ID-Hashing",
             "status": "PASS",
             "detail": "SHA-256 (DSGVO-konform: irreversible Pseudonymisierung)"
+        },
+        {
+            "check": "Format-Diversit\u00e4t",
+            "status": "WARN",
+            "detail": "Nur 0 Format-Kombinationen \u2014 Multi-Country Federation sollte diverser sein"
         },
         {
             "check": "Compliance-Standards",

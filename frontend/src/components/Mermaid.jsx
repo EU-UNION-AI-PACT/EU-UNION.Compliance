@@ -44,14 +44,36 @@ function init() {
   initialized = true;
 }
 
-// Simple, safe HTML escaper used to render parse-error messages.
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+/**
+ * Parse a sanitized SVG string into a live DOM element WITHOUT using
+ * innerHTML. Uses DOMParser on image/svg+xml, which:
+ *   1. Does NOT execute any <script> tag it encounters (per spec).
+ *   2. Cannot fire inline event handlers.
+ *   3. Rejects malformed markup — the caller sees a parse error tag it
+ *      can inspect and handle explicitly.
+ * DOMPurify is still applied first as a defense-in-depth belt.
+ */
+function svgNodeFromString(rawSvg) {
+  const clean = DOMPurify.sanitize(rawSvg, SVG_SANITIZE_CONFIG);
+  const doc = new DOMParser().parseFromString(clean, "image/svg+xml");
+  const err = doc.querySelector("parsererror");
+  if (err) {
+    throw new Error("mermaid SVG parse failed");
+  }
+  return doc.documentElement;
+}
+
+/**
+ * Build a safe <pre> node with textContent-only error message. Never
+ * touches innerHTML, so it is inherently XSS-safe.
+ */
+function errorNode(message) {
+  const pre = document.createElement("pre");
+  pre.style.color = "#f87171";
+  pre.style.fontSize = "11px";
+  pre.style.whiteSpace = "pre-wrap";
+  pre.textContent = `Mermaid parse error: ${message}`;
+  return pre;
 }
 
 export function Mermaid({ chart, id }) {
@@ -67,20 +89,17 @@ export function Mermaid({ chart, id }) {
       try {
         // mermaid.render returns a trusted SVG produced from the input diagram
         // definition. With securityLevel:'strict' it strips any inline event
-        // handlers or <foreignObject>. We apply DOMPurify.sanitize() as a
-        // defense-in-depth XSS mitigation before assigning to innerHTML.
+        // handlers or <foreignObject>. We then run DOMPurify + DOMParser to
+        // produce a live SVG DOM node and mount it via replaceChildren, so
+        // NO innerHTML assignment is ever performed anywhere in this file.
         const { svg } = await mermaid.render(targetId, chartRef.current);
-        const cleanSvg = DOMPurify.sanitize(svg, SVG_SANITIZE_CONFIG);
+        const node = svgNodeFromString(svg);
         if (!cancel && ref.current) {
-          ref.current.innerHTML = cleanSvg;
+          ref.current.replaceChildren(node);
         }
       } catch (e) {
-        // Never inject the raw error message as HTML — always HTML-escape it.
         if (ref.current) {
-          const safe = escapeHtml(e?.message || String(e));
-          ref.current.innerHTML = DOMPurify.sanitize(
-            `<pre style="color:#f87171;font-size:11px">Mermaid parse error: ${safe}</pre>`
-          );
+          ref.current.replaceChildren(errorNode(e?.message || String(e)));
         }
         console.error("Mermaid render failed:", e);
       }
