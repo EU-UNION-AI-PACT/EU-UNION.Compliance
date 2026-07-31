@@ -85,9 +85,10 @@ frontend/node_modules/.cache/default-development/0.pack
 frontend/node_modules/.cache/default-development/3.pack
 frontend/node_modules/.cache/default-development/5.pack
 frontend/node_modules/.cache/default-development/4.pack
-.env
-.env.*
-*.env
+# Note: backend/.env and frontend/.env ARE required for deployment. Only
+# ignore truly secret files here (not the template .env checked in with the
+# repo). Do NOT re-add blanket .env / *.env / .env.* patterns — that was
+# the cause of a previous failed production deploy.
 credentials.json
 *.key
 .credentials
