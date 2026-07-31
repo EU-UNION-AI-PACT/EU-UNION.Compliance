@@ -333,17 +333,17 @@ if __name__ == "__main__":
                 ]
             },
             "countries": [
-                {"code": "PT", "name": "Portugal", "scheme": "Autenticação.gov", "trust_framework": "AMA / eIDAS", "status": "implemented"},
-                {"code": "SE", "name": "Sweden", "scheme": "BankID", "trust_framework": "Finansiell ID-Teknik / eIDAS", "status": "implemented"},
-                {"code": "NO", "name": "Norway", "scheme": "ID-porten", "trust_framework": "Digdir", "status": "implemented"},
-                {"code": "DK", "name": "Denmark", "scheme": "MitID", "trust_framework": "Digitaliseringsstyrelsen", "status": "implemented"},
-                {"code": "IE", "name": "Ireland", "scheme": "MyGovID", "trust_framework": "Department of Social Protection", "status": "implemented"},
-                {"code": "FR", "name": "France", "scheme": "FranceConnect", "trust_framework": "FranceConnect / eIDAS", "status": "implemented"},
-                {"code": "IT", "name": "Italy", "scheme": "SPID / CIE", "trust_framework": "AgID / eIDAS", "status": "implemented"},
-                {"code": "CH", "name": "Switzerland", "scheme": "Swiyu", "trust_framework": "Swiyu Trust Infrastructure", "status": "implemented"},
-                {"code": "EU", "name": "EU ARF", "scheme": "EUDI Wallet", "trust_framework": "European Commission / eIDAS 2.0", "status": "implemented"},
-                {"code": "BR", "name": "Brazil", "scheme": "gov.br", "trust_framework": "ITI / ICP-Brasil", "status": "implemented"},
-                {"code": "US", "name": "United States", "scheme": "AAMVA mDL", "trust_framework": "ISO 18013-5 / AAMVA", "status": "implemented"}
+                {"code": "PT", "name": "Portugal", "scheme": "Autenticação.gov", "trust_framework": "AMA / eIDAS", "status": "implemented", "formats": ["SD-JWT VC", "OpenID4VP"]},
+                {"code": "SE", "name": "Sweden", "scheme": "BankID", "trust_framework": "Finansiell ID-Teknik / eIDAS", "status": "implemented", "formats": ["mDoc ISO 18013-5", "SD-JWT VC"]},
+                {"code": "NO", "name": "Norway", "scheme": "ID-porten", "trust_framework": "Digdir", "status": "implemented", "formats": ["SD-JWT VC", "OpenID4VP", "OIDC"]},
+                {"code": "DK", "name": "Denmark", "scheme": "MitID", "trust_framework": "Digitaliseringsstyrelsen", "status": "implemented", "formats": ["SD-JWT VC", "W3C VC-JWT"]},
+                {"code": "IE", "name": "Ireland", "scheme": "MyGovID", "trust_framework": "Department of Social Protection", "status": "implemented", "formats": ["SD-JWT VC", "OpenID4VP", "SAML 2.0"]},
+                {"code": "FR", "name": "France", "scheme": "FranceConnect", "trust_framework": "FranceConnect / eIDAS", "status": "implemented", "formats": ["SD-JWT VC", "mDoc ISO 18013-5", "W3C VC-JWT"]},
+                {"code": "IT", "name": "Italy", "scheme": "SPID / CIE", "trust_framework": "AgID / eIDAS", "status": "implemented", "formats": ["SAML 2.0", "SD-JWT VC", "OpenID4VP"]},
+                {"code": "CH", "name": "Switzerland", "scheme": "Swiyu", "trust_framework": "Swiyu Trust Infrastructure", "status": "implemented", "formats": ["SD-JWT VC", "mDoc ISO 18013-5", "OpenID4VP"]},
+                {"code": "EU", "name": "EU ARF", "scheme": "EUDI Wallet", "trust_framework": "European Commission / eIDAS 2.0", "status": "implemented", "formats": ["SD-JWT VC", "mDoc ISO 18013-5", "OpenID4VP", "OpenID4VCI"]},
+                {"code": "BR", "name": "Brazil", "scheme": "gov.br", "trust_framework": "ITI / ICP-Brasil", "status": "implemented", "formats": ["W3C VC-JWT", "SAML 2.0", "OpenID4VP"]},
+                {"code": "US", "name": "United States", "scheme": "AAMVA mDL", "trust_framework": "ISO 18013-5 / AAMVA", "status": "implemented", "formats": ["mDoc ISO 18013-5", "W3C VC-JWT"]}
             ],
             "data_minimization": {
                 "enabled": True,

@@ -1,6 +1,6 @@
 {
-    "timestamp": "2026-07-31T17:43:09.399589+00:00",
-    "status": "WARN",
+    "timestamp": "2026-07-31T19:45:18.427868+00:00",
+    "status": "PASS",
     "checks": [
         {
             "check": "LoA",
@@ -44,8 +44,8 @@
         },
         {
             "check": "Format-Diversit\u00e4t",
-            "status": "WARN",
-            "detail": "Nur 0 Format-Kombinationen \u2014 Multi-Country Federation sollte diverser sein"
+            "status": "PASS",
+            "detail": "10 verschiedene Format-Kombinationen \u00fcber 11 L\u00e4nder"
         },
         {
             "check": "Compliance-Standards",

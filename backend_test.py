@@ -1,196 +1,248 @@
 #!/usr/bin/env python3
 """
-ITERATION 8 REGRESSION TEST — pnia-compliance refactor only
-Targeted testing for subprocess.run migration (was asyncio.create_subprocess_exec)
+ITERATION 10 BUG-FIX VERIFICATION — Format-Diversität (credits-aware)
+
+BUG: Format-Diversität was returning WARN because countries lacked formats field
+FIX: Added realistic per-country formats arrays to all 11 countries in test config
+
+VERIFY ONLY:
+A) POST /api/pnia-compliance/check → Format-Diversität status == PASS
+B) GET /api/pnia-compliance/bsi-report → Format-Diversität status == PASS
+C) GET /api/health → operational + database:true
 """
-import os
-import sys
+
 import requests
+import sys
+import json
 
-# Read backend URL from frontend/.env
-BACKEND_URL = None
-env_path = "/app/frontend/.env"
-if os.path.exists(env_path):
-    with open(env_path, 'r') as f:
-        for line in f:
-            if line.startswith('REACT_APP_BACKEND_URL='):
-                BACKEND_URL = line.split('=', 1)[1].strip()
-                break
+BASE_URL = "https://code-audit-fix-25.preview.emergentagent.com/api"
 
-if not BACKEND_URL:
-    print("❌ FATAL: Could not read REACT_APP_BACKEND_URL from /app/frontend/.env")
-    sys.exit(1)
-
-API_BASE = f"{BACKEND_URL}/api"
-print(f"🔗 Testing against: {API_BASE}\n")
-
-# Test counters
-passed = 0
-failed = 0
-test_results = []
-
-def test(name: str, fn):
-    """Run a single test and track results"""
-    global passed, failed
+def test_format_diversity_check():
+    """A) POST /api/pnia-compliance/check - verify Format-Diversität PASS"""
+    print("\n" + "="*80)
+    print("TEST A: POST /api/pnia-compliance/check - Format-Diversität verification")
+    print("="*80)
+    
+    url = f"{BASE_URL}/pnia-compliance/check"
+    
     try:
-        fn()
-        passed += 1
-        test_results.append(f"✅ {name}")
-        print(f"✅ {name}")
-    except AssertionError as e:
-        failed += 1
-        test_results.append(f"❌ {name}: {e}")
-        print(f"❌ {name}: {e}")
+        response = requests.post(url, json={}, timeout=60)
+        print(f"✓ HTTP Status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"✗ FAIL: Expected HTTP 200, got {response.status_code}")
+            print(f"Response: {response.text[:500]}")
+            return False
+        
+        data = response.json()
+        
+        # Verify response structure
+        if "checks" not in data:
+            print(f"✗ FAIL: Response missing 'checks' field")
+            print(f"Response keys: {data.keys()}")
+            return False
+        
+        # Find Format-Diversität check
+        format_check = None
+        for check in data["checks"]:
+            if "Format-Diversität" in check.get("check", ""):
+                format_check = check
+                break
+        
+        if not format_check:
+            print(f"✗ FAIL: Format-Diversität check not found in response")
+            print(f"Available checks: {[c.get('check') for c in data['checks']]}")
+            return False
+        
+        print(f"✓ Found Format-Diversität check")
+        print(f"  Check name: {format_check['check']}")
+        print(f"  Status: {format_check['status']}")
+        print(f"  Detail: {format_check['detail']}")
+        
+        # Assert status == PASS (not WARN)
+        if format_check["status"] != "PASS":
+            print(f"✗ FAIL: Format-Diversität status is '{format_check['status']}', expected 'PASS'")
+            return False
+        print(f"✓ Format-Diversität status is PASS (not WARN)")
+        
+        # Assert detail matches pattern and starts with number >= 3
+        detail = format_check["detail"]
+        if "verschiedene Format-Kombinationen über" not in detail:
+            print(f"✗ FAIL: Detail does not contain expected text 'verschiedene Format-Kombinationen über'")
+            return False
+        print(f"✓ Detail contains expected text pattern")
+        
+        # Extract the number from the detail string
+        # Expected format: "N verschiedene Format-Kombinationen über..."
+        import re
+        match = re.match(r'^(\d+)\s+verschiedene', detail)
+        if not match:
+            print(f"✗ FAIL: Could not extract number from detail string")
+            return False
+        
+        format_count = int(match.group(1))
+        print(f"✓ Format count: {format_count}")
+        
+        if format_count < 3:
+            print(f"✗ FAIL: Format count {format_count} is less than 3")
+            return False
+        print(f"✓ Format count {format_count} >= 3")
+        
+        # Assert overall body.status is PASS
+        if data.get("status") != "PASS":
+            print(f"✗ FAIL: Overall compliance status is '{data.get('status')}', expected 'PASS'")
+            print(f"  (Format-Diversität WARN was previously downgrading overall status)")
+            return False
+        print(f"✓ Overall compliance status is PASS")
+        
+        print(f"\n✅ TEST A PASSED: Format-Diversität check is PASS with {format_count} format combinations")
+        return True
+        
+    except requests.exceptions.Timeout:
+        print(f"✗ FAIL: Request timeout after 60 seconds")
+        return False
     except Exception as e:
-        failed += 1
-        test_results.append(f"❌ {name}: EXCEPTION {type(e).__name__}: {e}")
-        print(f"❌ {name}: EXCEPTION {type(e).__name__}: {e}")
+        print(f"✗ FAIL: Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
-# ============================================================================
-# A) GET /api/pnia-compliance/ → service info
-# ============================================================================
-def test_a_service_info():
-    r = requests.get(f"{API_BASE}/pnia-compliance/", timeout=10)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
-    assert body.get("service") == "PNIA EU-ARF Compliance Validator", \
-        f"Expected service='PNIA EU-ARF Compliance Validator', got {body.get('service')}"
-    endpoints = body.get("endpoints", {})
-    assert endpoints.get("bsi_report") == "/pnia-compliance/bsi-report", \
-        f"Expected bsi_report='/pnia-compliance/bsi-report', got {endpoints.get('bsi_report')}"
 
-test("A) GET /api/pnia-compliance/ returns service info", test_a_service_info)
-
-# ============================================================================
-# B) GET /api/pnia-compliance/bsi-report → BSI report with checks
-# ============================================================================
-def test_b_bsi_report():
-    r = requests.get(f"{API_BASE}/pnia-compliance/bsi-report", timeout=10)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
+def test_bsi_report():
+    """B) GET /api/pnia-compliance/bsi-report - verify Format-Diversität PASS in report"""
+    print("\n" + "="*80)
+    print("TEST B: GET /api/pnia-compliance/bsi-report - Format-Diversität in report")
+    print("="*80)
     
-    # Check status is one of the expected values
-    status = body.get("status")
-    assert status in ["PASS", "WARN", "FAIL"], \
-        f"Expected status in ['PASS', 'WARN', 'FAIL'], got {status}"
+    url = f"{BASE_URL}/pnia-compliance/bsi-report"
     
-    # Check checks is a non-empty list
-    checks = body.get("checks")
-    assert isinstance(checks, list), f"Expected checks to be a list, got {type(checks)}"
-    assert len(checks) > 0, f"Expected non-empty checks list, got {len(checks)} items"
-    
-    # Check each check has required keys
-    for i, check in enumerate(checks):
-        assert "check" in check, f"Check {i} missing 'check' key"
-        assert "status" in check, f"Check {i} missing 'status' key"
-        assert "detail" in check, f"Check {i} missing 'detail' key"
-    
-    # Check at least one check has status "PASS"
-    pass_count = sum(1 for c in checks if c.get("status") == "PASS")
-    assert pass_count > 0, f"Expected at least one check with status='PASS', got {pass_count}"
+    try:
+        response = requests.get(url, timeout=30)
+        print(f"✓ HTTP Status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"✗ FAIL: Expected HTTP 200, got {response.status_code}")
+            print(f"Response: {response.text[:500]}")
+            return False
+        
+        data = response.json()
+        
+        # Verify response structure
+        if "checks" not in data:
+            print(f"✗ FAIL: Response missing 'checks' field")
+            print(f"Response keys: {data.keys()}")
+            return False
+        
+        # Find Format-Diversität check
+        format_check = None
+        for check in data["checks"]:
+            if "Format-Diversität" in check.get("check", ""):
+                format_check = check
+                break
+        
+        if not format_check:
+            print(f"✗ FAIL: Format-Diversität check not found in BSI report")
+            print(f"Available checks: {[c.get('check') for c in data['checks']]}")
+            return False
+        
+        print(f"✓ Found Format-Diversität check in BSI report")
+        print(f"  Check name: {format_check['check']}")
+        print(f"  Status: {format_check['status']}")
+        print(f"  Detail: {format_check['detail']}")
+        
+        # Assert status == PASS
+        if format_check["status"] != "PASS":
+            print(f"✗ FAIL: Format-Diversität status in BSI report is '{format_check['status']}', expected 'PASS'")
+            return False
+        print(f"✓ Format-Diversität status in BSI report is PASS")
+        
+        print("\n✅ TEST B PASSED: Format-Diversität check is PASS in BSI report")
+        return True
+        
+    except Exception as e:
+        print(f"✗ FAIL: Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
-test("B) GET /api/pnia-compliance/bsi-report returns valid report", test_b_bsi_report)
 
-# ============================================================================
-# C) POST /api/pnia-compliance/check with body {} → compliance response
-# ============================================================================
-def test_c_post_check():
-    r = requests.post(f"{API_BASE}/pnia-compliance/check", json={}, timeout=35)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
+def test_health():
+    """C) GET /api/health - verify operational + database:true"""
+    print("\n" + "="*80)
+    print("TEST C: GET /api/health - sanity check")
+    print("="*80)
     
-    # Check required keys
-    assert "timestamp" in body, "Missing 'timestamp' key"
-    assert "status" in body, "Missing 'status' key"
-    assert "checks" in body, "Missing 'checks' key"
-    assert "summary" in body, "Missing 'summary' key"
+    url = f"{BASE_URL}/health"
     
-    # Check status is valid
-    status = body.get("status")
-    assert status in ["PASS", "WARN", "FAIL"], \
-        f"Expected status in ['PASS', 'WARN', 'FAIL'], got {status}"
+    try:
+        response = requests.get(url, timeout=10)
+        print(f"✓ HTTP Status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"✗ FAIL: Expected HTTP 200, got {response.status_code}")
+            return False
+        
+        data = response.json()
+        print(f"✓ Response: {data}")
+        
+        if data.get("status") != "operational":
+            print(f"✗ FAIL: Expected status='operational', got '{data.get('status')}'")
+            return False
+        print(f"✓ Status is operational")
+        
+        if data.get("database") != True:
+            print(f"✗ FAIL: Expected database=true, got {data.get('database')}")
+            return False
+        print(f"✓ Database is true")
+        
+        print("\n✅ TEST C PASSED: Health check operational with database connection")
+        return True
+        
+    except Exception as e:
+        print(f"✗ FAIL: Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def main():
+    print("\n" + "="*80)
+    print("ITERATION 10 BUG-FIX VERIFICATION — Format-Diversität")
+    print("="*80)
+    print(f"Backend URL: {BASE_URL}")
     
-    # Check checks is a list with at least 4 items
-    checks = body.get("checks")
-    assert isinstance(checks, list), f"Expected checks to be a list, got {type(checks)}"
-    assert len(checks) >= 4, f"Expected at least 4 checks, got {len(checks)}"
+    results = {
+        "A_format_diversity_check": False,
+        "B_bsi_report": False,
+        "C_health": False
+    }
     
-    # Check summary is a non-empty string in German
-    summary = body.get("summary")
-    assert isinstance(summary, str), f"Expected summary to be a string, got {type(summary)}"
-    assert len(summary) > 0, f"Expected non-empty summary, got empty string"
-    # Check for German words (basic check)
-    german_indicators = ["abgeschlossen", "bestanden", "fehlgeschlagen", "Warnungen"]
-    has_german = any(word in summary for word in german_indicators)
-    assert has_german, f"Expected German summary, got: {summary}"
+    # Run tests in order
+    results["A_format_diversity_check"] = test_format_diversity_check()
+    results["B_bsi_report"] = test_bsi_report()
+    results["C_health"] = test_health()
     
-    # Check timestamp is valid ISO-8601
-    timestamp = body.get("timestamp")
-    assert isinstance(timestamp, str), f"Expected timestamp to be a string, got {type(timestamp)}"
-    assert "T" in timestamp, f"Expected ISO-8601 timestamp with 'T', got {timestamp}"
-
-test("C) POST /api/pnia-compliance/check returns compliance response", test_c_post_check)
-
-# ============================================================================
-# D) GET /api/identity-broker/providers and /health → sanity checks
-# ============================================================================
-def test_d1_identity_providers():
-    r = requests.get(f"{API_BASE}/identity-broker/providers", timeout=10)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
+    # Summary
+    print("\n" + "="*80)
+    print("SUMMARY")
+    print("="*80)
     
-    # Check we have at least 20 providers
-    providers = body if isinstance(body, list) else body.get("providers", [])
-    assert len(providers) >= 20, f"Expected at least 20 providers, got {len(providers)}"
-
-test("D1) GET /api/identity-broker/providers returns >= 20 providers", test_d1_identity_providers)
-
-def test_d2_identity_health():
-    r = requests.get(f"{API_BASE}/identity-broker/health", timeout=10)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
+    passed = sum(1 for v in results.values() if v)
+    total = len(results)
     
-    # Check status is "healthy"
-    status = body.get("status")
-    assert status == "healthy", f"Expected status='healthy', got {status}"
-
-test("D2) GET /api/identity-broker/health returns status=healthy", test_d2_identity_health)
-
-# ============================================================================
-# Additional sanity: GET /api/health → operational with database
-# ============================================================================
-def test_additional_health():
-    r = requests.get(f"{API_BASE}/health", timeout=10)
-    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
-    body = r.json()
+    for test_name, result in results.items():
+        status = "✅ PASS" if result else "❌ FAIL"
+        print(f"{status}: {test_name}")
     
-    # Check status is "operational"
-    status = body.get("status")
-    assert status == "operational", f"Expected status='operational', got {status}"
+    print(f"\nTotal: {passed}/{total} tests passed")
     
-    # Check database is true
-    database = body.get("database")
-    assert database is True, f"Expected database=true, got {database}"
+    if passed == total:
+        print("\n🎉 ALL TESTS PASSED - Format-Diversität bug fix verified")
+        return 0
+    else:
+        print(f"\n❌ {total - passed} test(s) failed")
+        return 1
 
-test("Additional) GET /api/health returns operational with database=true", test_additional_health)
 
-# ============================================================================
-# SUMMARY
-# ============================================================================
-print("\n" + "="*80)
-print(f"ITERATION 8 REGRESSION TEST RESULTS")
-print("="*80)
-print(f"✅ PASSED: {passed}")
-print(f"❌ FAILED: {failed}")
-print(f"📊 TOTAL:  {passed + failed}")
-print("="*80)
-
-if failed > 0:
-    print("\n❌ FAILED TESTS:")
-    for result in test_results:
-        if result.startswith("❌"):
-            print(f"  {result}")
-    sys.exit(1)
-else:
-    print("\n✅ ALL TESTS PASSED - pnia-compliance refactor is regression-safe")
-    sys.exit(0)
+if __name__ == "__main__":
+    sys.exit(main())

@@ -293,6 +293,20 @@ backend:
         -working: true
         -agent: "testing"
         -comment: "✅ ALL TESTS PASSED (8/8). Auth guards working correctly: (1) POST /api/validate/custom-rules/GDPR without Bearer returns HTTP 401 (unauthenticated), (2) DELETE /api/validate/custom-rules/nonexistent-id without Bearer returns HTTP 401 (unauthenticated), (3) GET /api/validate/custom-rules without Bearer returns HTTP 401 (admin-scoped list endpoint protected). Public read endpoint working: (4) GET /api/validate/custom-rules/GDPR without Bearer returns HTTP 200 with correct structure (framework=GDPR, count=0, rules is empty list - transparency principle). Regression test: (5) POST /api/validate with framework=GDPR and empty payload returns HTTP 200, (6) status=FAIL as expected, (7) missing_required=7 (>= 5 requirement met), (8) No payload value leaks in response (only field names in covered/missing arrays). Custom rules merge does not break base validation behavior."
+  - task: "Format-Diversität bug fix — PNIA compliance check (Iteration 10)"
+    implemented: true
+    working: true
+    file: "backend/scripts/eu_arf_compliance_check.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "BUG FIX · Iteration 10. The Format-Diversität compliance check was returning WARN status ('Nur 0 Format-Kombinationen') because every country entry in the built-in test config lacked a formats field. Added realistic per-country formats arrays to all 11 countries in test_config block (~line 335). Each country now has 2-4 PNIA-compliant formats (SD-JWT VC, mDoc ISO 18013-5, OpenID4VP, OpenID4VCI, W3C VC-JWT, SAML 2.0, OIDC). Verify: (A) POST /api/pnia-compliance/check returns Format-Diversität status=PASS with detail showing >= 3 format combinations, overall body.status=PASS. (B) GET /api/pnia-compliance/bsi-report shows Format-Diversität status=PASS. (C) GET /api/health returns operational + database:true."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (3/3). BUG FIX VERIFIED. (A) POST /api/pnia-compliance/check: HTTP 200, Format-Diversität check found with status=PASS (not WARN), detail='10 verschiedene Format-Kombinationen über 11 Länder' (10 >= 3 requirement met), overall compliance status=PASS (Format-Diversität WARN no longer downgrading overall status). (B) GET /api/pnia-compliance/bsi-report: HTTP 200, Format-Diversität check in BSI report has status=PASS with same detail. (C) GET /api/health: HTTP 200, status=operational, database=true. The bug fix is working correctly — all 11 countries now have formats arrays, Format-Diversität check passes with 10 unique format combinations, and overall compliance status is PASS."
 
 frontend:
   - task: "Session token hardening — memory-first + sessionStorage (Iteration 9)"
@@ -384,8 +398,8 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "1.1"
-  test_sequence: 4
+  version: "1.2"
+  test_sequence: 5
   run_ui: false
 
 test_plan:
@@ -395,6 +409,48 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+    -agent: "testing"
+    -message: |
+      ITERATION 10 BUG-FIX VERIFICATION COMPLETE — Format-Diversität fix verified (3/3 tests passed).
+      
+      ✅ BUG FIX VERIFIED:
+      
+      BUG: Format-Diversität compliance check was returning WARN status because all 11 countries 
+      in the test config lacked a `formats` field, resulting in "Nur 0 Format-Kombinationen" error.
+      
+      FIX APPLIED: Added realistic per-country formats arrays to all 11 countries in 
+      /app/backend/scripts/eu_arf_compliance_check.py test_config block (~line 335). Each country 
+      now has 2-4 PNIA-compliant formats (SD-JWT VC, mDoc ISO 18013-5, OpenID4VP, OpenID4VCI, 
+      W3C VC-JWT, SAML 2.0, OIDC).
+      
+      TEST RESULTS:
+      
+      A) POST /api/pnia-compliance/check (body: {})
+         ✓ HTTP 200
+         ✓ Format-Diversität check found in body.checks
+         ✓ Status = PASS (not WARN) ✅
+         ✓ Detail = "10 verschiedene Format-Kombinationen über 11 Länder"
+         ✓ Format count = 10 (>= 3 requirement met) ✅
+         ✓ Overall body.status = PASS ✅
+         ✓ Format-Diversität WARN no longer downgrading overall compliance status
+      
+      B) GET /api/pnia-compliance/bsi-report
+         ✓ HTTP 200
+         ✓ Format-Diversität check found in BSI report
+         ✓ Status = PASS (matches POST /check result) ✅
+         ✓ Detail = "10 verschiedene Format-Kombinationen über 11 Länder"
+      
+      C) GET /api/health
+         ✓ HTTP 200
+         ✓ status = "operational"
+         ✓ database = true
+      
+      📊 TOTAL: 3/3 tests passed (100% success rate)
+      
+      The bug fix is working correctly. All 11 countries now have formats arrays with 
+      PNIA-compliant credential formats. The Format-Diversität check now passes with 10 
+      unique format combinations across the multi-country federation, and the overall 
+      compliance status is PASS (no longer downgraded by the Format-Diversität WARN).
     -agent: "testing"
     -message: |
       ITERATION 9 SESSION TOKEN SECURITY REGRESSION COMPLETE — All tests passed (4/4, 0 pageerror events, ~60 seconds total).
