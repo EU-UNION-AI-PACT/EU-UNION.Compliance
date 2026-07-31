@@ -60,7 +60,10 @@ export default function PNIACompliance() {
   };
 
   useEffect(() => {
+    // Mount-only bootstrap. runComplianceCheck reads stable setters from the
+    // component scope; no stale-closure risk.
     runComplianceCheck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getStatusIcon = (status) => {

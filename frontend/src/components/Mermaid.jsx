@@ -7,6 +7,9 @@ function init() {
   if (initialized) return;
   mermaid.initialize({
     startOnLoad: false,
+    // Defense-in-depth: strictest security level — no HTML in labels, no
+    // <foreignObject>, no user-provided JS. Applies to all subsequent renders.
+    securityLevel: "strict",
     theme: "dark",
     fontFamily: "JetBrains Mono, monospace",
     themeVariables: {
@@ -20,10 +23,24 @@ function init() {
       textColor: "#e5e7eb",
       fontSize: "13px",
     },
-    flowchart: { curve: "basis", htmlLabels: true },
-    sequence: { actorFontFamily: "Inter", noteFontFamily: "Inter", messageFontFamily: "JetBrains Mono" },
+    flowchart: { curve: "basis", htmlLabels: false },
+    sequence: {
+      actorFontFamily: "Inter",
+      noteFontFamily: "Inter",
+      messageFontFamily: "JetBrains Mono",
+    },
   });
   initialized = true;
+}
+
+// Simple, safe HTML escaper used to render parse-error messages.
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export function Mermaid({ chart, id }) {
@@ -37,12 +54,22 @@ export function Mermaid({ chart, id }) {
     const targetId = id || `mmd-${Math.random().toString(36).slice(2, 9)}`;
     (async () => {
       try {
+        // mermaid.render returns a trusted SVG produced from the input diagram
+        // definition. With securityLevel:'strict' it strips any inline event
+        // handlers or <foreignObject> nodes, so assigning to innerHTML is safe.
         const { svg } = await mermaid.render(targetId, chartRef.current);
-        if (!cancel && ref.current) ref.current.innerHTML = svg;
-      } catch (e) {
-        if (ref.current) {
-          ref.current.innerHTML = `<pre style="color:#f87171;font-size:11px">Mermaid parse error: ${e?.message || e}</pre>`;
+        if (!cancel && ref.current) {
+          ref.current.innerHTML = svg;
         }
+      } catch (e) {
+        // Never inject the raw error message as HTML — always HTML-escape it.
+        if (ref.current) {
+          const safe = escapeHtml(e?.message || String(e));
+          ref.current.innerHTML =
+            `<pre style="color:#f87171;font-size:11px">Mermaid parse error: ${safe}</pre>`;
+        }
+        // eslint-disable-next-line no-console
+        console.error("Mermaid render failed:", e);
       }
     })();
     return () => {

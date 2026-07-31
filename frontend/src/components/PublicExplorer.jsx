@@ -86,7 +86,10 @@ export default function PublicExplorer() {
       try {
         const evt = JSON.parse(e.data);
         setTicker((prev) => [{ ...evt, _rx: Date.now() }, ...prev].slice(0, 8));
-      } catch { /* ignore */ }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("PublicExplorer ticker parse failed:", err);
+      }
     });
     es.onerror = () => setSseState("closed");
     return () => es.close();
@@ -106,7 +109,10 @@ export default function PublicExplorer() {
       });
       const j = await res.json();
       setLastReport(j);
-    } catch { /* ignore */ }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("PublicExplorer sample validation failed:", err);
+    }
     finally {
       setBusy(null);
     }

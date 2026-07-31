@@ -22,7 +22,10 @@ export function AuthProvider({ children }) {
     try {
       const u = await authMe();
       setUser(u);
-    } catch {
+    } catch (err) {
+      // Session expired or invalid — clear it and force re-login.
+      // eslint-disable-next-line no-console
+      console.warn("Auth /me failed:", err);
       setSessionToken(null);
       setUser(null);
     } finally {
@@ -49,7 +52,11 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await authLogout();
-    } catch {}
+    } catch (err) {
+      // Backend logout errors are non-fatal — we still clear the local session.
+      // eslint-disable-next-line no-console
+      console.warn("Backend logout failed (clearing local session anyway):", err);
+    }
     setSessionToken(null);
     setUser(null);
   };

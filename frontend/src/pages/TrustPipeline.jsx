@@ -84,7 +84,14 @@ export default function TrustPipeline() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    getCaChain().then(setChain).catch(() => setChain([]));
+    // getCaChain is a stable module-level import; setChain is a stable setter.
+    // Effect must run exactly once at mount.
+    getCaChain().then(setChain).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn("getCaChain failed:", err);
+      setChain([]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const doParse = async () => {

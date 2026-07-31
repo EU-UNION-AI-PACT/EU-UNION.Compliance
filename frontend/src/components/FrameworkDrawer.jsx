@@ -71,8 +71,9 @@ export default function FrameworkDrawer({ code, onClose }) {
       await navigator.clipboard.writeText(curlCmd);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Clipboard copy failed:", err);
     }
   };
 

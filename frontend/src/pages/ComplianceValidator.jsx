@@ -118,8 +118,11 @@ export default function ComplianceValidator() {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
       osc.start(now);
       osc.stop(now + 0.5);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      // Audio context can fail in unsupported browsers or when user hasn't
+      // interacted with the page yet — non-fatal.
+      // eslint-disable-next-line no-console
+      console.warn("Ticker tone failed:", err);
     }
   };
 
@@ -155,8 +158,9 @@ export default function ComplianceValidator() {
         setTicker((prev) =>
           [{ ...evt, _rx: Date.now(), _pulse: evt.status === "FAIL" }, ...prev].slice(0, 50)
         );
-      } catch {
-        /* ignore */
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Ticker validation event parse failed:", err);
       }
     });
     es.addEventListener("replay", (e) => {
@@ -165,8 +169,9 @@ export default function ComplianceValidator() {
         setTicker((prev) =>
           [...prev, { ...evt, _rx: Date.now(), _replay: true }].slice(0, 50)
         );
-      } catch {
-        /* ignore */
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Ticker replay event parse failed:", err);
       }
     });
     es.onerror = () => setSseState("closed");
@@ -174,6 +179,11 @@ export default function ComplianceValidator() {
       es.close();
       esRef.current = null;
     };
+    // The SSE connection must be established exactly ONCE per mount. `playTone`
+    // is intentionally captured via closure; it reads the latest `soundOn` via
+    // `soundOnRef.current`, so no stale-closure bug exists. Setters (setTicker,
+    // setSseState) are stable per React's contract.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- categories for the filter dropdown ----

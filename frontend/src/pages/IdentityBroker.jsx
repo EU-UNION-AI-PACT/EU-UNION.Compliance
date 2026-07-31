@@ -18,8 +18,11 @@ export default function IdentityBroker() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Mount-only bootstrap. loadProviders + loadHealthStatus read stable state
+    // setters and constants — no stale-closure risk.
     loadProviders();
     loadHealthStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadProviders = async () => {
@@ -28,6 +31,8 @@ export default function IdentityBroker() {
       const data = await response.json();
       setProviders(data.providers || []);
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load identity providers:", err);
       setError("Failed to load providers");
     }
   };
@@ -38,7 +43,8 @@ export default function IdentityBroker() {
       const data = await response.json();
       setHealthStatus(data);
     } catch (err) {
-      console.error("Health check failed");
+      // eslint-disable-next-line no-console
+      console.error("Identity broker health check failed:", err);
     }
   };
 
