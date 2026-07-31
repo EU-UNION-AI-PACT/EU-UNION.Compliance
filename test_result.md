@@ -347,8 +347,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Säule B merge — pnia-compliance (BSI report) + identity-broker"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
