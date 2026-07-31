@@ -31,6 +31,21 @@ Web-App (React + FastAPI + MongoDB) — eIDAS 2.0 / EUDI-Wallet Referenz-Infrast
   4. **GitHub Live-Sync** — 10 repos, per-repo status (LIVE / http-error), aggregate stars, cache-refresh button
 - **Every cell** is bound to a real backend endpoint. No hardcoded emails. No fake events. No client-side auth bypass. Complies with the No-Mocks-Policy.
 
+### Iteration 5 — Stateless Compliance Validator + BLAUPAUSE (autonom)
+- **Infra restore v2**: recreated `/app/backend/.env` (fresh MASTER_KEY, EMERGENT_LLM_KEY, MONGO_URL, DB_NAME, ISSUER_URL) + `/app/frontend/.env`. Installed missing `frozendict` + `cachetools` deps for pyld. Backend + frontend operational again.
+- **NEW · Stateless Compliance Validation Engine** (`routers/compliance_validate.py`, `services/compliance_engine.py`, `data/frameworks.json`):
+  - 251 real compliance frameworks 1:1 from `regula-quest.lovable.app/directory` (MiCA, DORA, GDPR, DSA, DMA, EU AI Act, NIS2, eIDAS 2, CRA, ISO 27001/42001, PCI DSS, HIPAA, SOC 2, NIST CSF/AI RMF, MAS, APRA, MAS, RBI, LGPD, POPIA, PIPL, DPDP, W3C VC, FIDO2, OIDC, EUDI ARF, WCAG 2.2, MITRE ATT&CK/ATLAS, etc.).
+  - 8 specialised rule engines: GDPR (9 rules Art. 4-49), DORA (9 rules Art. 5-45), EU AI Act (10 rules Art. 3-72), DMA (7 rules), DSA (6 rules), NIS2 (6 rules), eIDAS 2 (5 rules), CRA (5 rules).
+  - All other frameworks -> `GENERIC_GOVERNANCE_SKELETON` (organization, scope, responsible_role, documentation_url, last_review_date, evidence_repository).
+  - `POST /api/validate` accepts arbitrary JSON payload + framework code; returns status (PASS / PASS_WITH_WARNINGS / FAIL / UNKNOWN_FRAMEWORK) + score + covered/missing/warnings + suggestions with statement-of-reasons per rule. **Data-minimisation: only field NAMES are echoed back, never values.**
+  - `POST /api/validate/batch` — up to 20 frameworks parallel.
+  - **Zero MongoDB writes**, no cross-request state, no LLM calls (deterministic rule engine).
+  - `GET /api/validate/stream` — Server-Sent Events endpoint with 200-entry in-process ring buffer; disappears on tab close & on process restart. Ticker events carry only outcomes, no payload values.
+- **NEW · BLAUPAUSE DER GESAMTARCHITEKTUR** (`routers/blueprint.py`, `pages/Blueprint.jsx`, route `/blueprint`): full 5-layer model, 10 building blocks (BB-01…BB-10), 6-stage validation path, 5 data flows, 9 regulatory references, Geltungsvorbehalt — Version 1.0, Stand 31. Juli 2026, Daniel Pohl / CoE e.V.
+- **NEW · Compliance Validation Dashboard** (`pages/ComplianceValidator.jsx`, route `/validator`): sortable framework directory (category + full-text search), JSON payload editor, one-click validation, colour-coded report with covered/missing/warnings breakdown, source-of-truth link per framework, side-panel **Live Ticker** via EventSource (SSE) — ephemeral by design.
+- **Compliance mapping**: EU AI Act Art. 12 record-keeping (deterministic + auditable) & Art. 50 transparency (no AI decision surface), DMA (open, machine-readable JSON API, no vendor lock-in, batch up to 20), DSA Art. 17 statement of reasons (rule.hint per finding), GDPR data-minimisation (payload values never echoed).
+- **Backend tests**: 44/44 first-pass (23 validator + 21 blueprint). No PNIA regressions.
+
 ### Iteration 4 — PNIA (Production Network ID Architecture) build-up
 - **Infra restore**: recreated missing backend/.env (MONGO_URL, DB_NAME, generated MASTER_KEY, ISSUER_URL, EMERGENT_LLM_KEY) + frontend/.env (REACT_APP_BACKEND_URL); added missing `pyld` dependency. Backend operational again.
 - **Säule B merge (1:1 from user backup)**: `routers/pnia_compliance.py` (EU-ARF/eIDAS BSI report validator via `scripts/eu_arf_compliance_check.py`), `routers/identity_broker.py` (23 global eID providers), frontend `PNIACompliance.jsx` + `IdentityBroker.jsx`, `PNIA_Komplettpaket.pdf`.
