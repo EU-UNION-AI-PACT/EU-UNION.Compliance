@@ -8,16 +8,68 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// --- Bearer token from localStorage (Kubernetes ingress overrides CORS
-// wildcards so we can't rely on HttpOnly cookies from the browser). ---
+// --- Bearer token storage (memory-first, sessionStorage fallback) ---
+//
+// Kubernetes ingress overrides CORS wildcards, so we cannot rely on
+// backend-set HttpOnly cookies from the browser. We therefore keep the token
+// in JS-accessible storage, but harden it two ways:
+//
+//   1. PRIMARY: an in-memory reference — cleared on hard reload / navigation
+//      away from the SPA. This is what every request reads from.
+//   2. FALLBACK: window.sessionStorage — dies when the tab closes. Used only
+//      to survive soft in-app reloads.
+//
+// We deliberately do NOT use window.localStorage because it survives across
+// tabs/windows and browser restarts, expanding the XSS blast radius.
 const TOKEN_KEY = "eudi_session_token";
+let _memoryToken = null;
+
+function _readSessionStorage() {
+  try {
+    return typeof window !== "undefined" && window.sessionStorage
+      ? window.sessionStorage.getItem(TOKEN_KEY)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function _writeSessionStorage(t) {
+  try {
+    if (typeof window === "undefined" || !window.sessionStorage) return;
+    if (t) window.sessionStorage.setItem(TOKEN_KEY, t);
+    else window.sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // sessionStorage may be blocked in private mode — memory fallback still works.
+  }
+}
+
+// One-time migration: if a legacy token is still sitting in localStorage from
+// a previous release, hoist it into sessionStorage + memory and wipe it.
+function _migrateLegacyLocalStorage() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    const legacy = window.localStorage.getItem(TOKEN_KEY);
+    if (legacy) {
+      _memoryToken = legacy;
+      _writeSessionStorage(legacy);
+      window.localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    // ignore quota / access errors
+  }
+}
+_migrateLegacyLocalStorage();
 
 export function setSessionToken(t) {
-  if (t) window.localStorage.setItem(TOKEN_KEY, t);
-  else window.localStorage.removeItem(TOKEN_KEY);
+  _memoryToken = t || null;
+  _writeSessionStorage(t || null);
 }
 export function getSessionToken() {
-  return window.localStorage.getItem(TOKEN_KEY);
+  if (_memoryToken) return _memoryToken;
+  const fromSession = _readSessionStorage();
+  if (fromSession) _memoryToken = fromSession;
+  return _memoryToken;
 }
 
 api.interceptors.request.use((cfg) => {

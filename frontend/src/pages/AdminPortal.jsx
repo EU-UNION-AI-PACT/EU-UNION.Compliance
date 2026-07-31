@@ -27,6 +27,7 @@ import {
   runErasure,
   listReposLive,
   getAuditLog,
+  getSessionToken,
 } from "../lib/api";
 import { DowngradePanel } from "../components/DowngradePanel";
 
@@ -542,7 +543,7 @@ function CustomRulesTab() {
 
   const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
   const tokenHeader = () => {
-    const t = window.localStorage.getItem("eudi_session_token");
+    const t = getSessionToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
   };
 
@@ -763,7 +764,7 @@ function OpsWebhookTab() {
 
   const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
   const tokenHeader = () => {
-    const t = window.localStorage.getItem("eudi_session_token");
+    const t = getSessionToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
   };
 

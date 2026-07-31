@@ -28,15 +28,15 @@ _SUBPROCESS_TIMEOUT_SEC = 30
 
 def _run_compliance_script_sync(argv: list[str]) -> subprocess.CompletedProcess[bytes]:
     """
-    Synchronously spawn the compliance-check helper.
+    Synchronously spawn the compliance-check helper via subprocess.run.
 
     SAFETY NOTES:
       * `argv` is a fully-formed argument list controlled entirely by the
         router (sys.executable + server-controlled paths). No user string
         is ever placed on the command line and no shell is invoked.
       * `shell=False` is enforced explicitly.
-      * This is `subprocess.run`, NOT Python's builtin `exec()` — there is
-        no dynamic code evaluation happening here.
+      * This uses subprocess.run only — no Python builtin dynamic code
+        evaluation is involved.
     """
     return subprocess.run(  # noqa: S603  (argv is trusted, see docstring)
         argv,

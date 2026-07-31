@@ -295,6 +295,20 @@ backend:
         -comment: "✅ ALL TESTS PASSED (8/8). Auth guards working correctly: (1) POST /api/validate/custom-rules/GDPR without Bearer returns HTTP 401 (unauthenticated), (2) DELETE /api/validate/custom-rules/nonexistent-id without Bearer returns HTTP 401 (unauthenticated), (3) GET /api/validate/custom-rules without Bearer returns HTTP 401 (admin-scoped list endpoint protected). Public read endpoint working: (4) GET /api/validate/custom-rules/GDPR without Bearer returns HTTP 200 with correct structure (framework=GDPR, count=0, rules is empty list - transparency principle). Regression test: (5) POST /api/validate with framework=GDPR and empty payload returns HTTP 200, (6) status=FAIL as expected, (7) missing_required=7 (>= 5 requirement met), (8) No payload value leaks in response (only field names in covered/missing arrays). Custom rules merge does not break base validation behavior."
 
 frontend:
+  - task: "Session token hardening — memory-first + sessionStorage (Iteration 9)"
+    implemented: true
+    working: true
+    file: "frontend/src/lib/api.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "ITERATION 9 SECURITY — Removed `window.localStorage` usage for the session Bearer token. New model: in-memory reference (`_memoryToken`) as primary, `window.sessionStorage` as fallback (dies on tab close). One-time migration lifts legacy tokens from localStorage → sessionStorage on module init. AdminPortal.jsx (lines 545, 766) now imports `getSessionToken` from `../lib/api` instead of hitting localStorage directly. Non-sensitive keys (eudi_lang, eudi_bookmarks) still use localStorage — that is deliberate. Please verify: (1) /admin login gate still loads without errors; (2) /validator still loads and the Bearer flow still works via api.js interceptor (no direct localStorage token reads anywhere). Manually verified the legacy-migration path by stubbing /api/auth/me: legacy localStorage token WAS moved into sessionStorage and localStorage was cleared."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ITERATION 9 REGRESSION COMPLETE (4/4 tests passed, 0 pageerror events). TEST 1 (Fresh /paper visit): Page renders 'Konzeptpapier' ✓, localStorage.getItem('eudi_session_token') == null ✓, 0 page errors ✓. TEST 2 (Legacy migration): Set legacy token in localStorage, stubbed /api/auth/me, reloaded page → localStorage.getItem('eudi_session_token') == null ✓, sessionStorage.getItem('eudi_session_token') == 'legacy-x' ✓, page still renders 'Konzeptpapier' ✓, 0 page errors ✓. Migration evidence confirmed: localStorage=null AND sessionStorage='legacy-x'. TEST 3 (/admin login gate): Cleared both storages, navigated to /admin → page text contains 'Admin'/'ZUGANG' ✓, 0 page errors ✓. TEST 4 (/validator sanity): Navigated to /validator → text '251' present (frameworks count) ✓, text 'OPEN' present (SSE indicator) ✓, 0 page errors ✓. Total test duration: ~60 seconds (credits-aware). The session token security hardening is working correctly — no code is populating the legacy localStorage key on fresh loads, legacy tokens migrate correctly to sessionStorage, and all pages render without errors."
   - task: "Mermaid diagram rendering (Iteration 8 XSS hardening)"
     implemented: true
     working: true
@@ -381,6 +395,37 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+    -agent: "testing"
+    -message: |
+      ITERATION 9 SESSION TOKEN SECURITY REGRESSION COMPLETE — All tests passed (4/4, 0 pageerror events, ~60 seconds total).
+      
+      ✅ TEST 1: Fresh visit to /paper
+      - Page text contains 'Konzeptpapier' ✓
+      - localStorage.getItem('eudi_session_token') == null ✓ (proves no code populates legacy key on fresh load)
+      - 0 page errors ✓
+      
+      ✅ TEST 2: Legacy-token migration path
+      - Set 'legacy-x' in localStorage, stubbed /api/auth/me, reloaded page
+      - localStorage.getItem('eudi_session_token') == null ✓ (migrated away)
+      - sessionStorage.getItem('eudi_session_token') == 'legacy-x' ✓ (migration successful)
+      - Page still renders 'Konzeptpapier' ✓
+      - 0 page errors ✓
+      - MIGRATION EVIDENCE CONFIRMED: localStorage=null AND sessionStorage='legacy-x'
+      
+      ✅ TEST 3: /admin login gate
+      - Cleared both storages, navigated to /admin
+      - Page text contains 'Admin' or 'ZUGANG' ✓ (Google sign-in gate rendered)
+      - 0 page errors ✓
+      
+      ✅ TEST 4: /validator sanity
+      - Navigated to /validator
+      - Text '251' present (frameworks count) ✓
+      - Text 'OPEN' present (SSE indicator) ✓
+      - 0 page errors ✓
+      
+      📊 TOTAL: 4/4 tests passed, 0 pageerror events, ~60 seconds duration (credits-aware)
+      
+      The Iteration-9 session token security hardening is working correctly. The in-memory + sessionStorage model is functioning as designed, legacy localStorage tokens migrate correctly, and all pages render without errors.
     -agent: "testing"
     -message: |
       ITERATION 8 CREDITS-AWARE FRONTEND SPOT-CHECK COMPLETE — All tests passed.
