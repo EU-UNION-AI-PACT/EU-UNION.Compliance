@@ -85,9 +85,17 @@ export default function PublicExplorer() {
     es.addEventListener("validation", (e) => {
       try {
         const evt = JSON.parse(e.data);
-        setTicker((prev) => [{ ...evt, _rx: Date.now() }, ...prev].slice(0, 8));
+        setTicker((prev) =>
+          [
+            {
+              ...evt,
+              _id: `pe-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              _rx: Date.now(),
+            },
+            ...prev,
+          ].slice(0, 8)
+        );
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("PublicExplorer ticker parse failed:", err);
       }
     });
@@ -110,7 +118,6 @@ export default function PublicExplorer() {
       const j = await res.json();
       setLastReport(j);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error("PublicExplorer sample validation failed:", err);
     }
     finally {
@@ -207,7 +214,7 @@ export default function PublicExplorer() {
               )}
               {ticker.map((evt, idx) => (
                 <div
-                  key={idx}
+                  key={evt._id || `${evt._rx}-${idx}`}
                   data-testid={`explorer-ticker-${idx}`}
                   className={`border border-white/5 rounded p-2 ${
                     evt.status === "FAIL" ? "pnia-fail-pulse" : ""

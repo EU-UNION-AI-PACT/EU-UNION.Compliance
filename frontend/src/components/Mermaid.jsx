@@ -1,7 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import mermaid from "mermaid";
+import DOMPurify from "dompurify";
 
 let initialized = false;
+
+// DOMPurify config that KEEPS SVG structure but drops any script/handler.
+// Applied as a defense-in-depth layer even though mermaid runs with
+// securityLevel:'strict' (no <foreignObject>, no inline event handlers).
+const SVG_SANITIZE_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  ADD_TAGS: ["foreignObject"], // allowed but harmless under strict mermaid
+  FORBID_TAGS: ["script"],
+  FORBID_ATTR: ["onclick", "onerror", "onload", "onmouseover", "onfocus"],
+};
 
 function init() {
   if (initialized) return;
@@ -56,19 +67,21 @@ export function Mermaid({ chart, id }) {
       try {
         // mermaid.render returns a trusted SVG produced from the input diagram
         // definition. With securityLevel:'strict' it strips any inline event
-        // handlers or <foreignObject> nodes, so assigning to innerHTML is safe.
+        // handlers or <foreignObject>. We apply DOMPurify.sanitize() as a
+        // defense-in-depth XSS mitigation before assigning to innerHTML.
         const { svg } = await mermaid.render(targetId, chartRef.current);
+        const cleanSvg = DOMPurify.sanitize(svg, SVG_SANITIZE_CONFIG);
         if (!cancel && ref.current) {
-          ref.current.innerHTML = svg;
+          ref.current.innerHTML = cleanSvg;
         }
       } catch (e) {
         // Never inject the raw error message as HTML — always HTML-escape it.
         if (ref.current) {
           const safe = escapeHtml(e?.message || String(e));
-          ref.current.innerHTML =
-            `<pre style="color:#f87171;font-size:11px">Mermaid parse error: ${safe}</pre>`;
+          ref.current.innerHTML = DOMPurify.sanitize(
+            `<pre style="color:#f87171;font-size:11px">Mermaid parse error: ${safe}</pre>`
+          );
         }
-        // eslint-disable-next-line no-console
         console.error("Mermaid render failed:", e);
       }
     })();

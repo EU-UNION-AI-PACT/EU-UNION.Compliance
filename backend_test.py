@@ -10,7 +10,7 @@ import sys
 import requests
 
 # Base URL from frontend/.env
-BASE_URL = "https://stateless-hub.preview.emergentagent.com/api"
+BASE_URL = "https://code-audit-fix-25.preview.emergentagent.com/api"
 
 # Test counters
 tests_passed = 0

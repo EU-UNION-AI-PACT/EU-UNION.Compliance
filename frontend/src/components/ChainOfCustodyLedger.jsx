@@ -51,7 +51,6 @@ export default function ChainOfCustodyLedger() {
     load();
     const iv = setInterval(load, 30_000);
     return () => clearInterval(iv);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -102,7 +101,7 @@ export default function ChainOfCustodyLedger() {
       <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5">
         {entries.length === 0 && (
           <div className="p-6 text-center text-[11px] font-mono text-slate-500">
-            no signed reports yet · press "signed PDF" or generate a bundle to fill the ledger
+            no signed reports yet · press &quot;signed PDF&quot; or generate a bundle to fill the ledger
           </div>
         )}
         {entries.map((e) => (

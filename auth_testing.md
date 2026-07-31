@@ -22,7 +22,7 @@ print('SESSION_TOKEN: ' + tok);
 ## Curl (Bearer)
 
 ```bash
-API=https://stateless-hub.preview.emergentagent.com
+API=https://code-audit-fix-25.preview.emergentagent.com
 curl -H "Authorization: Bearer $TOKEN" $API/api/auth/me
 ```
 

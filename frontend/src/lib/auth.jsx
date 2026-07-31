@@ -24,7 +24,6 @@ export function AuthProvider({ children }) {
       setUser(u);
     } catch (err) {
       // Session expired or invalid — clear it and force re-login.
-      // eslint-disable-next-line no-console
       console.warn("Auth /me failed:", err);
       setSessionToken(null);
       setUser(null);
@@ -54,7 +53,6 @@ export function AuthProvider({ children }) {
       await authLogout();
     } catch (err) {
       // Backend logout errors are non-fatal — we still clear the local session.
-      // eslint-disable-next-line no-console
       console.warn("Backend logout failed (clearing local session anyway):", err);
     }
     setSessionToken(null);

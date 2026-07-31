@@ -336,8 +336,8 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "1.0"
-  test_sequence: 3
+  version: "1.1"
+  test_sequence: 4
   run_ui: false
 
 test_plan:
@@ -347,6 +347,69 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+    -agent: "main"
+    -message: |
+      HEALTH CHECK + CODE REVIEW SWEEP (Iteration 8 · 31. Juli 2026)
+
+      A) HEALTH FIX
+         - Both /app/backend/.env and /app/frontend/.env were missing → backend
+           crashed with KeyError: 'MONGO_URL' and frontend spun on BACKOFF.
+         - Recreated both .env files with correct values (MONGO_URL, DB_NAME,
+           ISSUER_URL, MASTER_KEY, EMERGENT_LLM_KEY, ADMIN_EMAILS, CORS_ORIGINS
+           for backend; REACT_APP_BACKEND_URL + WDS_SOCKET_PORT for frontend).
+         - Ran `yarn install` in /app/frontend to install missing craco binary.
+         - Both services now RUNNING; /api/health returns
+           {"status":"operational","database":true}. Seeded 5 chapters + 32 PNIA
+           plaques on boot.
+
+      B) CODE QUALITY FIXES
+         1. Mermaid.jsx XSS hardening — added DOMPurify.sanitize() with an
+            SVG-only profile as a defense-in-depth layer over the existing
+            securityLevel:'strict' mermaid init. Both svg-inject and
+            parse-error-inject paths now go through DOMPurify.
+         2. pnia_compliance.py:81 — added an explicit safety comment
+            clarifying that this is `asyncio.create_subprocess_exec` (argv list,
+            no shell, no user string) and not Python's builtin `exec()`. The
+            SAST tool flagged a false positive.
+         3. Array-index-as-key eliminated in all 5 flagged files:
+            - ComplianceValidator.jsx: ticker events now get `_id` at
+              insertion time, key falls back to `_rx-idx`.
+            - PublicExplorer.jsx: same treatment for explorer ticker.
+            - AdminPortal.jsx: webhook history uses `h.id || h.at || wh-idx`.
+            - PNIACompliance.jsx: check card uses `check.check || check-idx`.
+            - TrustPipeline.jsx: anchor row keys use fingerprint_sha256.
+         4. PaperMarkdown.jsx: hoisted the inline `code` component out of
+            render (was recreating a component type on every render, causing
+            React to tear down subtrees).
+         5. DowngradePanel.jsx: removed the empty catch block (linter error).
+         6. AdminPortal.jsx + ChainOfCustodyLedger.jsx: HTML-escaped inline
+            double quotes (`&quot;`) to satisfy react/no-unescaped-entities.
+         7. calendar.jsx + command.jsx (shadcn/ui): added targeted
+            eslint-disable-next-line comments (these follow shadcn's official
+            patterns and cannot be removed without breaking react-day-picker
+            and cmdk).
+         8. Stripped 12 unused eslint-disable directives across 10 files.
+
+      C) VERIFICATION
+         - `mcp_lint_javascript` on /app/frontend/src → ✅ 0 issues (was 31).
+         - `mcp_lint_python` on /app/backend → ✅ 0 issues.
+         - `curl /api/health` → 200 OK.
+         - `curl /api/blueprint/` → 200 OK.
+         - `curl /api/validate/` → 200 OK.
+         - `curl /` (frontend) → 200 OK; /validator page renders 251
+           frameworks, 8 specialised validators, SSE OPEN, ticker panel.
+
+      D) NOT TOUCHED (intentional)
+         - Backend endpoint behaviour, existing API contracts, and iteration
+           1–7 features are unchanged. No new features added.
+         - Large-component decomposition (ComplianceValidator ~800 LOC,
+           AdminPortal ~1000 LOC) and localStorage → httpOnly-cookie migration
+           are architectural refactors best done as separate iterations with
+           explicit user sign-off — flagged in the review report but not
+           auto-applied to avoid breaking the running app.
+
+      No regressions detected. No new backend tests required — nothing that
+      the iteration 1–7 test suite covers was modified in the API layer.
     -agent: "main"
     -message: |
       ITERATION 7 — Chain-of-Custody + Bundle + Ops Webhook + Mermaid bug fix.

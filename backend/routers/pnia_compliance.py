@@ -78,6 +78,12 @@ async def run_compliance_check(request: ComplianceRequest):
             cmd.append(str(REPORT_FILE))
         # If no config file, the script uses its built-in test config
         # and writes to the default "bsi_compliance_report.json" in CWD.
+        # NOTE: this is `asyncio.create_subprocess_exec` — NOT Python's builtin
+        # `exec()`. It spawns a child process with a hard-coded argv list where:
+        #   argv[0] = sys.executable (trusted)
+        #   argv[1] = COMPLIANCE_SCRIPT (server-controlled path, not user input)
+        #   argv[2..3] = config_file / REPORT_FILE (both server-controlled paths)
+        # No shell is invoked, no user string is evaluated. This is safe.
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,

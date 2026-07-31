@@ -87,11 +87,9 @@ export default function TrustPipeline() {
     // getCaChain is a stable module-level import; setChain is a stable setter.
     // Effect must run exactly once at mount.
     getCaChain().then(setChain).catch((err) => {
-      // eslint-disable-next-line no-console
       console.warn("getCaChain failed:", err);
       setChain([]);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const doParse = async () => {
@@ -180,7 +178,7 @@ export default function TrustPipeline() {
                     {t("trust.anchors")}
                   </div>
                   {parsed.anchors.slice(0, 20).map((a, i) => (
-                    <div key={i} className="text-[10.5px] font-mono text-slate-400 py-1 border-b border-white/5 last:border-0">
+                    <div key={a.fingerprint_sha256 || `${a.subject || a.tsp_name}-${i}`} className="text-[10.5px] font-mono text-slate-400 py-1 border-b border-white/5 last:border-0">
                       <div className="text-white truncate">{a.subject || a.tsp_name}</div>
                       <div className="text-blue-400 truncate">{a.fingerprint_sha256.slice(0, 20)}…</div>
                     </div>

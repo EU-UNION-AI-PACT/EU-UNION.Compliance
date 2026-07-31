@@ -11,7 +11,7 @@ import json
 from typing import Dict, Any, Optional
 
 # Base URL from frontend/.env
-BASE_URL = "https://stateless-hub.preview.emergentagent.com"
+BASE_URL = "https://code-audit-fix-25.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Test results tracking

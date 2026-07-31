@@ -63,7 +63,6 @@ export default function PNIACompliance() {
     // Mount-only bootstrap. runComplianceCheck reads stable setters from the
     // component scope; no stale-closure risk.
     runComplianceCheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getStatusIcon = (status) => {
@@ -278,7 +277,7 @@ export default function PNIACompliance() {
             <div className="grid gap-4">
               <h2 className="text-lg font-medium text-white mb-2">{t('pnia_compliance.detailed_checks')}</h2>
               {complianceData.checks.map((check, index) => (
-                <Card key={index} className={`border ${getStatusColor(check.status)}`}>
+                <Card key={check.check || `check-${index}`} className={`border ${getStatusColor(check.status)}`}>
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-3">
                       <div className="mt-1">

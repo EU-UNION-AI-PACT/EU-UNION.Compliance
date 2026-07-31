@@ -577,11 +577,9 @@ function CustomRulesTab() {
   React.useEffect(() => {
     loadFrameworks();
     loadAll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   React.useEffect(() => {
     if (selected) loadRules(selected);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
   const addRule = async () => {
@@ -793,7 +791,6 @@ function OpsWebhookTab() {
 
   React.useEffect(() => {
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = async () => {
@@ -927,12 +924,12 @@ function OpsWebhookTab() {
         </div>
         {history.length === 0 && (
           <div className="p-6 text-center text-[11px] font-mono text-slate-500">
-            no deliveries yet — press "send test" or wait for a FAIL validation
+            no deliveries yet — press &quot;send test&quot; or wait for a FAIL validation
           </div>
         )}
         {history.map((h, idx) => (
           <div
-            key={idx}
+            key={h.id || h.at || `wh-${idx}`}
             data-testid={`webhook-history-${idx}`}
             className="px-3 py-2 border-b border-white/5 flex items-center gap-3"
           >

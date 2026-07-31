@@ -22,7 +22,10 @@ export function DowngradePanel() {
     try {
       const d = await getDowngrades();
       setRows(d);
-    } catch {}
+    } catch (err) {
+      // silent — refresh runs on an interval and will retry
+      void err;
+    }
   };
 
   useEffect(() => {

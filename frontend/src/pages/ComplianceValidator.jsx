@@ -95,7 +95,6 @@ export default function ComplianceValidator() {
     if (!soundOnRef.current) return;
     try {
       if (!audioCtxRef.current) {
-        // eslint-disable-next-line no-undef
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         audioCtxRef.current = new AC();
@@ -121,7 +120,6 @@ export default function ComplianceValidator() {
     } catch (err) {
       // Audio context can fail in unsupported browsers or when user hasn't
       // interacted with the page yet — non-fatal.
-      // eslint-disable-next-line no-console
       console.warn("Ticker tone failed:", err);
     }
   };
@@ -156,10 +154,17 @@ export default function ComplianceValidator() {
         const evt = JSON.parse(e.data);
         playTone(evt.status);
         setTicker((prev) =>
-          [{ ...evt, _rx: Date.now(), _pulse: evt.status === "FAIL" }, ...prev].slice(0, 50)
+          [
+            {
+              ...evt,
+              _id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              _rx: Date.now(),
+              _pulse: evt.status === "FAIL",
+            },
+            ...prev,
+          ].slice(0, 50)
         );
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("Ticker validation event parse failed:", err);
       }
     });
@@ -167,10 +172,17 @@ export default function ComplianceValidator() {
       try {
         const evt = JSON.parse(e.data);
         setTicker((prev) =>
-          [...prev, { ...evt, _rx: Date.now(), _replay: true }].slice(0, 50)
+          [
+            ...prev,
+            {
+              ...evt,
+              _id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              _rx: Date.now(),
+              _replay: true,
+            },
+          ].slice(0, 50)
         );
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("Ticker replay event parse failed:", err);
       }
     });
@@ -183,7 +195,6 @@ export default function ComplianceValidator() {
     // is intentionally captured via closure; it reads the latest `soundOn` via
     // `soundOnRef.current`, so no stale-closure bug exists. Setters (setTicker,
     // setSseState) are stable per React's contract.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- categories for the filter dropdown ----
@@ -713,7 +724,7 @@ export default function ComplianceValidator() {
             )}
             {ticker.map((evt, idx) => (
               <div
-                key={idx}
+                key={evt._id || `${evt._rx}-${idx}`}
                 data-testid={`ticker-row-${idx}`}
                 className={`border border-white/5 rounded p-2 hover:border-amber-500/30 transition-colors ${
                   evt._pulse ? "pnia-fail-pulse" : ""
