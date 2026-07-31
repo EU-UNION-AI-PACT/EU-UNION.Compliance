@@ -263,10 +263,16 @@ backend:
     status_history:
         -working: "NA"
         -agent: "main"
-        -comment: "BUG REPORTED · Mermaid parse error on /paper/jmap-wallet-auth (sequenceDiagram had <br/>, curly braces { sd_jwt_vp }, unicode ellipsis, and semicolons in messages) and defensive hardening on /paper/architektur (leading .env dot + comma inside cylindrical [( )] shape). Fixed seed_paper.py and updated the two chapters in the DB via update_one. VERIFICATION REQUIRED via frontend testing: visit /paper/jmap-wallet-auth and /paper/architektur, assert no <pre> containing 'Mermaid parse error' text is present under any [data-testid=mermaid-diagram]."
+        -comment: "BUG REPORTED · Mermaid parse error on /paper/jmap-wallet-auth."
         -working: true
         -agent: "testing"
-        -comment: "✅ BUG FIX VERIFIED (3/3 tests passed). Tested all three paper pages: (1) /paper/jmap-wallet-auth: 1 mermaid sequenceDiagram rendered as SVG with 'Wallet' participant name present, ZERO parse errors. (2) /paper/architektur: 1 mermaid flowchart TB rendered as SVG, ZERO parse errors. (3) /paper/executive-summary: 1 mermaid graph LR rendered as SVG (sanity check), ZERO parse errors. All [data-testid=mermaid-diagram] elements contain <svg> elements and NO <pre> elements with 'Mermaid parse error' text. The fix applied to seed_paper.py (removing <br/>, curly braces, unicode ellipsis, semicolons from sequenceDiagram messages, and cleaning .env/comma issues in flowchart) is working correctly. Screenshots saved as evidence."
+        -comment: "✅ BUG FIX VERIFIED (3/3 tests passed) — all mermaid diagrams render as SVG with 0 parse errors."
+        -working: true
+        -agent: "main"
+        -comment: "USER RE-REPORTED same bug in follow-up · Full sweep. (1) Backend GET /api/paper/chapters/{slug} — mermaid block counts confirmed: executive-summary=1, architektur=1, jmap-wallet-auth=1, multi-country=0, compliance=0. (2) Screenshot bot cycled through all 5 chapters — svg=1, pre=0 on every chapter with mermaid; svg=0, pre=0 on the two without. (3) /validator: 200 framework rows, SSE OPEN, ledger panel, ZERO js pageerror events, validate button triggers report card. (4) /admin login gate loads with no js errors. Nothing to fix; user's second report appears to duplicate the same bug that iteration 7 already fixed. Requesting testing agent to RE-VERIFY the fix + do a broader regression sweep for peace of mind."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ RE-VERIFICATION COMPLETE (7/7 tests passed) — User's re-reported bug is NOT reproducible. PART 1 MERMAID VERIFICATION: All 5 paper chapter URLs tested with 8-second mermaid render wait. (1) /paper/executive-summary: 1 diagram, 1 svg, 0 pre ✓ (2) /paper/architektur: 1 diagram, 1 svg, 0 pre ✓ (3) /paper/jmap-wallet-auth: 1 diagram, 1 svg, 0 pre ✓ (screenshot captured as evidence showing sequenceDiagram under section 3.2 Flow rendering correctly) (4) /paper/multi-country: 0 diagrams ✓ (no mermaid in this chapter - expected) (5) /paper/compliance: 0 diagrams ✓ (no mermaid in this chapter - expected). PART 2 REGRESSION SPOT-CHECK: (6) /validator: 200 framework rows (>= 100 ✓), SSE indicator 'OPEN' present ✓, ledger panel exists ✓, validate button exists ✓, report card appeared after validate click within 5s ✓, 0 page errors ✓. (7) /blueprint: Heading with 'BLAUPAUSE' present ✓, 5 layer elements (>= 1 ✓), 0 page errors ✓. ZERO console errors captured. ZERO page errors captured. NO mermaid parse errors found - all diagrams rendered as SVG. The iteration-7 mermaid fix is working correctly and the bug is fully resolved."
   - task: "Custom Rule Editor — /api/validate/custom-rules (admin-scoped)"
     implemented: true
     working: true
@@ -569,6 +575,29 @@ agent_communication:
       NO <pre> elements with "Mermaid parse error" text detected.
       
       The fix applied by main agent (removing <br/>, curly braces, unicode ellipsis, 
+    -agent: "testing"
+    -message: |
+      RE-VERIFICATION COMPLETE (Iteration 7 follow-up) — Mermaid bug is NOT reproducible.
+      
+      ✅ PART 1: MERMAID VERIFICATION (5/5 PASS)
+      Tested all 5 paper chapter URLs with 8-second mermaid render wait:
+      - /paper/executive-summary: 1 diagram, 1 svg, 0 pre ✅
+      - /paper/architektur: 1 diagram, 1 svg, 0 pre ✅
+      - /paper/jmap-wallet-auth: 1 diagram, 1 svg, 0 pre ✅ (screenshot evidence captured)
+      - /paper/multi-country: 0 diagrams ✅ (no mermaid in this chapter - expected)
+      - /paper/compliance: 0 diagrams ✅ (no mermaid in this chapter - expected)
+      
+      ✅ PART 2: REGRESSION SPOT-CHECK (2/2 PASS)
+      - /validator: 200 framework rows (>= 100 ✓), SSE indicator "OPEN" ✓, ledger panel ✓, 
+        validate button ✓, report card appeared within 5s ✓, 0 page errors ✓
+      - /blueprint: Heading "BLAUPAUSE" ✓, 5 layer elements ✓, 0 page errors ✓
+      
+      📊 RESULT: 7/7 tests passed, 0 console errors, 0 page errors, 0 mermaid parse errors
+      
+      The jmap-wallet-auth screenshot shows the mermaid sequenceDiagram rendering correctly 
+      under section "3.2 Flow" with proper SVG output. The iteration-7 mermaid fix is working 
+      correctly and the user's re-reported bug cannot be reproduced. The bug is fully resolved.
+
       semicolons from sequenceDiagram messages, and cleaning .env/comma issues in 
       flowchart) is working correctly. The two defective chapters have been successfully 
       repaired and updated in MongoDB.
