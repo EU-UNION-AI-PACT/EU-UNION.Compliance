@@ -295,6 +295,34 @@ backend:
         -comment: "✅ ALL TESTS PASSED (8/8). Auth guards working correctly: (1) POST /api/validate/custom-rules/GDPR without Bearer returns HTTP 401 (unauthenticated), (2) DELETE /api/validate/custom-rules/nonexistent-id without Bearer returns HTTP 401 (unauthenticated), (3) GET /api/validate/custom-rules without Bearer returns HTTP 401 (admin-scoped list endpoint protected). Public read endpoint working: (4) GET /api/validate/custom-rules/GDPR without Bearer returns HTTP 200 with correct structure (framework=GDPR, count=0, rules is empty list - transparency principle). Regression test: (5) POST /api/validate with framework=GDPR and empty payload returns HTTP 200, (6) status=FAIL as expected, (7) missing_required=7 (>= 5 requirement met), (8) No payload value leaks in response (only field names in covered/missing arrays). Custom rules merge does not break base validation behavior."
 
 frontend:
+  - task: "Mermaid diagram rendering (Iteration 8 XSS hardening)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Mermaid.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "ITERATION 8 — rewrote Mermaid.jsx to eliminate `innerHTML` assignments entirely. Now uses DOMPurify.sanitize() → DOMParser.parseFromString(image/svg+xml) → replaceChildren(). Error path uses document.createElement + textContent (never innerHTML). Addresses SAST XSS finding on lines 75/81 of previous impl."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ 3/3 paper chapters render mermaid as SVG (executive-summary, architektur, jmap-wallet-auth). 0 <pre> parse-error tags. 0 pageerror events. Screenshot evidence captured."
+  - task: "ComplianceValidator SSE + validate flow (Iteration 8 hook-dep fix)"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/ComplianceValidator.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "ITERATION 8 — playTone converted to useCallback (empty dep array, reads soundOn via ref for stale-closure safety). SSE effect now lists [playTone] in deps → satisfies react-hooks/exhaustive-deps AND does not cause reconnects since playTone identity is stable."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ /validator loads 251 frameworks, SSE=OPEN, JSON payload textarea visible, validate CTA click produces a report card within 5s, ticker row appears. 0 pageerror events."
   - task: "PNIA Registry page (/pnia-registry)"
     implemented: true
     working: "NA"
