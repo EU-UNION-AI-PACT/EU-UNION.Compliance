@@ -14,6 +14,7 @@ import {
   Layers,
 } from "lucide-react";
 import Iso3DStack from "../components/Iso3DStack";
+import PublicExplorer from "../components/PublicExplorer";
 
 const HERO_LANDING =
   "https://images.unsplash.com/photo-1579567761406-4684ee0c75b6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwzfHxjeWJlcnB1bmslMjB0ZWNobm9sb2d5JTIwbm9kZSUyMG5ldHdvcmslMjBhYnN0cmFjdHxlbnwwfHx8fDE3ODUzMTI3MDN8MA&ixlib=rb-4.1.0&q=85";
@@ -263,6 +264,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* PUBLIC EXPLORER */}
+      <PublicExplorer />
 
       {/* GLOBE CTA */}
       <section className="relative border-t border-white/5">

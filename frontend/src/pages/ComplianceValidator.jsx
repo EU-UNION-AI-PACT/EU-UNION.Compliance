@@ -17,8 +17,10 @@ import {
   VolumeX,
   FileDown,
   ChevronRight,
+  Package,
 } from "lucide-react";
 import FrameworkDrawer from "../components/FrameworkDrawer";
+import ChainOfCustodyLedger from "../components/ChainOfCustodyLedger";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL ||
@@ -80,6 +82,8 @@ export default function ComplianceValidator() {
   const [drawerCode, setDrawerCode] = useState(null);
   const [soundOn, setSoundOn] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [bundleBusy, setBundleBusy] = useState(false);
+  const [bundleFrameworks, setBundleFrameworks] = useState([]); // codes selected for bundle
   const audioCtxRef = useRef(null);
   const soundOnRef = useRef(true);
   useEffect(() => {
@@ -252,6 +256,56 @@ export default function ComplianceValidator() {
     }
   };
 
+  const toggleBundle = (code) => {
+    setBundleFrameworks((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code].slice(0, 20)
+    );
+  };
+
+  const downloadBundle = async () => {
+    if (bundleFrameworks.length === 0) return;
+    setBundleBusy(true);
+    setError(null);
+    try {
+      let payload;
+      try {
+        payload = JSON.parse(payloadText || "{}");
+      } catch (e) {
+        throw new Error(`Payload is not valid JSON: ${e.message}`);
+      }
+      // 1) batch-validate to get real reports
+      const batch = await fetch(`${BACKEND_URL}/api/validate/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          frameworks: bundleFrameworks,
+          payload,
+          source: "bundle-download",
+        }),
+      }).then((r) => r.json());
+      // 2) send them to the bundle PDF renderer
+      const res = await fetch(`${BACKEND_URL}/api/validate/report-bundle.pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reports: batch.reports || [] }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pnia-compliance-bundle-${bundleFrameworks.length}-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      setError(`Bundle failed: ${e.message}`);
+    } finally {
+      setBundleBusy(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] px-6 lg:px-10 py-10 text-slate-200">
       {/* --------- Header --------- */}
@@ -387,6 +441,18 @@ export default function ComplianceValidator() {
                       {f.category}
                     </span>
                   </button>
+                  <label
+                    className="inline-flex items-center px-2 cursor-pointer select-none"
+                    title="Add to bundle"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bundleFrameworks.includes(f.code)}
+                      onChange={() => toggleBundle(f.code)}
+                      data-testid={`fw-bundle-${f.code}`}
+                      className="h-3 w-3 accent-emerald-500"
+                    />
+                  </label>
                   <button
                     onClick={() => setDrawerCode(f.code)}
                     data-testid={`fw-detail-${f.code}`}
@@ -403,12 +469,42 @@ export default function ComplianceValidator() {
                 </div>
               )}
             </div>
-            <div className="p-3 border-t border-white/10 text-[10px] font-mono text-slate-500">
-              Selected:{" "}
-              <span className="text-amber-400">{selectedFramework}</span>{" "}
-              {specialised.has(selectedFramework.toUpperCase())
-                ? "· SPECIALISED rule engine"
-                : "· generic Governance Skeleton"}
+            <div className="p-3 border-t border-white/10 text-[10px] font-mono text-slate-500 flex items-center gap-3 flex-wrap">
+              <span>
+                Selected:{" "}
+                <span className="text-amber-400">{selectedFramework}</span>{" "}
+                {specialised.has(selectedFramework.toUpperCase())
+                  ? "· SPECIALISED rule engine"
+                  : "· generic Governance Skeleton"}
+              </span>
+              <span className="ml-auto flex items-center gap-2">
+                <span>
+                  Bundle:{" "}
+                  <span className="text-emerald-400">
+                    {bundleFrameworks.length}
+                  </span>{" "}
+                  / 20
+                </span>
+                <button
+                  onClick={downloadBundle}
+                  disabled={bundleBusy || bundleFrameworks.length === 0}
+                  data-testid="btn-download-bundle"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-black disabled:opacity-40 text-[10px] font-mono uppercase tracking-wider rounded"
+                  title="Combined signed PDF booklet with TOC"
+                >
+                  <Package size={11} />
+                  {bundleBusy ? "building…" : "signed bundle PDF"}
+                </button>
+                {bundleFrameworks.length > 0 && (
+                  <button
+                    onClick={() => setBundleFrameworks([])}
+                    data-testid="btn-clear-bundle"
+                    className="text-[10px] font-mono uppercase tracking-wider text-slate-500 hover:text-red-400"
+                  >
+                    clear
+                  </button>
+                )}
+              </span>
             </div>
           </div>
 
@@ -657,6 +753,11 @@ export default function ComplianceValidator() {
           detail="Every report carries a statement of reasons (hint field per rule) — Art. 17 DSA style."
         />
       </div>
+      {/* --------- Chain-of-Custody Ledger --------- */}
+      <div className="mt-8">
+        <ChainOfCustodyLedger />
+      </div>
+
       {/* --------- Framework Detail Drawer --------- */}
       {drawerCode && (
         <FrameworkDrawer code={drawerCode} onClose={() => setDrawerCode(null)} />

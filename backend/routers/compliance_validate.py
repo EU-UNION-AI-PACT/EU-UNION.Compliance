@@ -27,14 +27,16 @@ import json
 from collections import deque
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from routers.auth import require_admin
 from services import compliance_custom_rules as custom_rules_svc
 from services import compliance_engine as engine
+from services import compliance_ledger as ledger_svc
 from services import compliance_pdf as pdf_svc
+from services import ops_webhook as ops_svc
 
 router = APIRouter(prefix="/validate", tags=["Compliance Validator"])
 
@@ -52,6 +54,8 @@ def _publish(event: dict[str, Any]) -> None:
             q.put_nowait(event)
         except asyncio.QueueFull:
             pass
+    # Fire-and-forget realtime ops alert (Slack/Teams-compatible)
+    ops_svc.dispatch_bg(event)
 
 
 # --------------------------------------------------------------------------- #
@@ -77,6 +81,20 @@ class CustomRuleIn(BaseModel):
 
 class PdfReportRequest(BaseModel):
     report: dict[str, Any]
+
+
+class PdfBundleRequest(BaseModel):
+    reports: list[dict[str, Any]] = Field(..., min_length=1, max_length=20)
+
+
+class WebhookSettingsIn(BaseModel):
+    webhook_url: str | None = None
+    on_fail_only: bool = True
+    min_score: int | None = None
+
+
+class WebhookTestIn(BaseModel):
+    webhook_url: str
 
 
 # --------------------------------------------------------------------------- #
@@ -198,12 +216,28 @@ async def do_batch_validate(body: BatchValidateRequest) -> dict[str, Any]:
 # Signed PDF export                                                            #
 # --------------------------------------------------------------------------- #
 @router.post("/report.pdf")
-async def report_pdf(body: PdfReportRequest) -> Response:
+async def report_pdf(body: PdfReportRequest, request: Request) -> Response:
     """Render a validation report to a signed A4 PDF (ES256 JWS)."""
     if not isinstance(body.report, dict):
         raise HTTPException(422, "report must be an object")
     signature = await pdf_svc.sign_report(body.report)
     pdf_bytes = pdf_svc.render_report_pdf(body.report, signature)
+    # Append to chain-of-custody ledger (public, safe metadata only)
+    fw = body.report.get("framework", {}) or {}
+    if isinstance(fw, str):
+        fw_code = fw
+    else:
+        fw_code = str(fw.get("code", "—"))
+    await ledger_svc.append(
+        digest_sha256=signature["digest_sha256"],
+        kid=signature["kid"],
+        algorithm=signature["algorithm"],
+        framework_code=fw_code,
+        status=str(body.report.get("status", "—")),
+        score=body.report.get("score") if isinstance(body.report.get("score"), int) else None,
+        kind="pdf",
+        requester=str(request.headers.get("X-Requester", "anonymous"))[:60],
+    )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -217,9 +251,105 @@ async def report_pdf(body: PdfReportRequest) -> Response:
 
 
 @router.post("/report.sign")
-async def report_sign(body: PdfReportRequest) -> dict[str, Any]:
+async def report_sign(body: PdfReportRequest, request: Request) -> dict[str, Any]:
     """Return the JWS envelope for a report without rendering a PDF."""
-    return await pdf_svc.sign_report(body.report)
+    signature = await pdf_svc.sign_report(body.report)
+    fw = body.report.get("framework", {}) or {}
+    fw_code = fw if isinstance(fw, str) else str(fw.get("code", "—"))
+    await ledger_svc.append(
+        digest_sha256=signature["digest_sha256"],
+        kid=signature["kid"],
+        algorithm=signature["algorithm"],
+        framework_code=fw_code,
+        status=str(body.report.get("status", "—")),
+        score=body.report.get("score") if isinstance(body.report.get("score"), int) else None,
+        kind="sign",
+        requester=str(request.headers.get("X-Requester", "anonymous"))[:60],
+    )
+    return signature
+
+
+@router.post("/report-bundle.pdf")
+async def report_bundle_pdf(body: PdfBundleRequest, request: Request) -> Response:
+    """Combine several signed reports into a single PDF booklet with TOC."""
+    # Compute a bundle-level signature over the concatenated JSON of all reports.
+    bundle_report = {
+        "kind": "bundle",
+        "count": len(body.reports),
+        "reports": body.reports,
+    }
+    signature = await pdf_svc.sign_report(bundle_report)
+    pdf_bytes = pdf_svc.render_bundle_pdf(body.reports, signature)
+    # Append one bundle entry to the ledger with per-report digests as extras
+    per_report_codes = []
+    for r in body.reports:
+        fw = r.get("framework", {}) or {}
+        per_report_codes.append(fw if isinstance(fw, str) else str(fw.get("code", "—")))
+    await ledger_svc.append(
+        digest_sha256=signature["digest_sha256"],
+        kid=signature["kid"],
+        algorithm=signature["algorithm"],
+        framework_code="BUNDLE",
+        status="BUNDLE",
+        score=None,
+        kind="bundle",
+        requester=str(request.headers.get("X-Requester", "anonymous"))[:60],
+        extras={"count": len(body.reports), "frameworks": per_report_codes},
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'attachment; filename="pnia-compliance-bundle.pdf"',
+            "X-PNIA-Signature-Alg": signature["algorithm"],
+            "X-PNIA-Signature-KID": signature["kid"],
+            "X-PNIA-Digest-SHA256": signature["digest_sha256"],
+            "X-PNIA-Bundle-Count": str(len(body.reports)),
+        },
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Chain-of-custody ledger (public read, tamper-evident)                        #
+# --------------------------------------------------------------------------- #
+@router.get("/ledger")
+async def ledger_recent(limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
+    entries = await ledger_svc.recent(limit=limit)
+    st = await ledger_svc.stats()
+    return {"total": st["total"], "count": len(entries), "entries": entries}
+
+
+@router.get("/ledger/verify")
+async def ledger_verify(limit: int = Query(500, ge=1, le=2000)) -> dict[str, Any]:
+    return await ledger_svc.verify_chain(limit=limit)
+
+
+# --------------------------------------------------------------------------- #
+# Ops webhook (admin)                                                          #
+# --------------------------------------------------------------------------- #
+@router.get("/ops-webhook")
+async def get_ops_webhook(user: dict = Depends(require_admin)) -> dict[str, Any]:
+    cfg = await ops_svc.get_settings()
+    return {"settings": cfg, "history": ops_svc.history(limit=20)}
+
+
+@router.post("/ops-webhook")
+async def set_ops_webhook(
+    body: WebhookSettingsIn, user: dict = Depends(require_admin)
+) -> dict[str, Any]:
+    return await ops_svc.set_settings(
+        webhook_url=body.webhook_url,
+        on_fail_only=body.on_fail_only,
+        min_score=body.min_score,
+        actor=user.get("email", "admin"),
+    )
+
+
+@router.post("/ops-webhook/test")
+async def test_ops_webhook(
+    body: WebhookTestIn, user: dict = Depends(require_admin)
+) -> dict[str, Any]:
+    return await ops_svc.send_test(body.webhook_url)
 
 
 # --------------------------------------------------------------------------- #

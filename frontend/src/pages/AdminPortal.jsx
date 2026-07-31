@@ -16,6 +16,8 @@ import {
   Clock,
   Users,
   Fingerprint,
+  Zap,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../lib/auth";
@@ -465,6 +467,7 @@ export default function AdminPortal() {
     { id: "gdpr", label: "GDPR Art. 17", icon: Trash2, testId: "admin-tab-gdpr" },
     { id: "sync", label: "GitHub Live-Sync", icon: GitBranch, testId: "admin-tab-sync" },
     { id: "rules", label: isDE ? "Custom Rules" : "Custom Rules", icon: ShieldAlert, testId: "admin-tab-rules" },
+    { id: "webhook", label: isDE ? "Ops-Webhook" : "Ops Webhook", icon: Zap, testId: "admin-tab-webhook" },
   ];
 
   return (
@@ -517,6 +520,7 @@ export default function AdminPortal() {
       {tab === "gdpr" && <GdprTab />}
       {tab === "sync" && <SyncTab />}
       {tab === "rules" && <CustomRulesTab />}
+      {tab === "webhook" && <OpsWebhookTab />}
     </div>
   );
 }
@@ -739,6 +743,222 @@ function CustomRulesTab() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------- //
+// Ops Webhook admin tab                                                       //
+// --------------------------------------------------------------------------- //
+function OpsWebhookTab() {
+  const [settings, setSettings] = React.useState({
+    webhook_url: "",
+    on_fail_only: true,
+    min_score: "",
+  });
+  const [history, setHistory] = React.useState([]);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const [saved, setSaved] = React.useState(null);
+
+  const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
+  const tokenHeader = () => {
+    const t = window.localStorage.getItem("eudi_session_token");
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  };
+
+  const load = async () => {
+    setError(null);
+    try {
+      const j = await fetch(`${BE}/api/validate/ops-webhook`, {
+        headers: tokenHeader(),
+      });
+      if (!j.ok) throw new Error(`HTTP ${j.status}`);
+      const data = await j.json();
+      setSettings({
+        webhook_url: data.settings.webhook_url || "",
+        on_fail_only: data.settings.on_fail_only !== false,
+        min_score:
+          data.settings.min_score === null || data.settings.min_score === undefined
+            ? ""
+            : String(data.settings.min_score),
+      });
+      setHistory(data.history || []);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  React.useEffect(() => {
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const body = {
+        webhook_url: settings.webhook_url || null,
+        on_fail_only: !!settings.on_fail_only,
+        min_score: settings.min_score === "" ? null : parseInt(settings.min_score, 10),
+      };
+      const res = await fetch(`${BE}/api/validate/ops-webhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...tokenHeader() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSaved(new Date().toISOString());
+      await load();
+    } catch (e) {
+      setError(`save: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BE}/api/validate/ops-webhook/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...tokenHeader() },
+        body: JSON.stringify({ webhook_url: settings.webhook_url }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await load();
+    } catch (e) {
+      setError(`test: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4" data-testid="ops-webhook-tab">
+      <div className="border border-white/10 bg-[#0a0f19]/60 rounded-md p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <Zap size={14} className="text-amber-400" />
+          <span className="font-mono text-[11px] uppercase tracking-wider text-slate-300">
+            Realtime Ops Alert
+          </span>
+          <span className="text-[10px] font-mono text-slate-500 ml-auto">
+            Slack / Teams compatible payload
+          </span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px_180px] gap-3">
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
+              Webhook URL
+            </label>
+            <input
+              value={settings.webhook_url}
+              onChange={(e) => setSettings({ ...settings, webhook_url: e.target.value })}
+              placeholder="https://hooks.slack.com/services/... or https://outlook.office.com/webhook/..."
+              data-testid="webhook-url"
+              className="w-full px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-slate-200 outline-none focus:border-amber-500/60"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
+              Trigger
+            </label>
+            <select
+              value={settings.on_fail_only ? "fail" : "any"}
+              onChange={(e) =>
+                setSettings({ ...settings, on_fail_only: e.target.value === "fail" })
+              }
+              data-testid="webhook-trigger"
+              className="w-full px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-slate-200 outline-none focus:border-amber-500/60"
+            >
+              <option value="fail">Only FAIL</option>
+              <option value="any">Any status</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
+              Min score (opt.)
+            </label>
+            <input
+              value={settings.min_score}
+              onChange={(e) => setSettings({ ...settings, min_score: e.target.value.replace(/[^0-9]/g, "") })}
+              placeholder="e.g. 50"
+              data-testid="webhook-min-score"
+              className="w-full px-3 py-2 bg-black/60 border border-white/10 rounded font-mono text-[11px] text-slate-200 outline-none focus:border-amber-500/60"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-4">
+          <button
+            onClick={save}
+            disabled={busy}
+            data-testid="webhook-save"
+            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-mono text-[10px] uppercase tracking-wider rounded"
+          >
+            save
+          </button>
+          <button
+            onClick={sendTest}
+            disabled={busy || !settings.webhook_url}
+            data-testid="webhook-test"
+            className="px-3 py-2 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-black disabled:opacity-40 font-mono text-[10px] uppercase tracking-wider rounded inline-flex items-center gap-1.5"
+          >
+            <Send size={11} />
+            send test
+          </button>
+          {saved && (
+            <span className="text-[10px] font-mono text-emerald-400 ml-2">
+              saved {saved.slice(11, 19)}
+            </span>
+          )}
+          {error && (
+            <span className="ml-auto text-[10px] font-mono text-red-400">{error}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="border border-white/10 bg-[#0a0f19]/60 rounded-md">
+        <div className="p-3 border-b border-white/10 font-mono text-[11px] uppercase tracking-wider text-slate-300">
+          Delivery history · in-process ring buffer · {history.length}
+        </div>
+        {history.length === 0 && (
+          <div className="p-6 text-center text-[11px] font-mono text-slate-500">
+            no deliveries yet — press "send test" or wait for a FAIL validation
+          </div>
+        )}
+        {history.map((h, idx) => (
+          <div
+            key={idx}
+            data-testid={`webhook-history-${idx}`}
+            className="px-3 py-2 border-b border-white/5 flex items-center gap-3"
+          >
+            <span
+              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase tracking-wider ${
+                h.ok
+                  ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
+                  : "text-red-300 border-red-500/40 bg-red-500/10"
+              }`}
+            >
+              {h.ok ? "OK" : "FAIL"}
+            </span>
+            <span className="text-[11px] font-mono text-amber-400 w-24 truncate">
+              {h.event?.framework || "—"}
+            </span>
+            <span className="text-[10px] font-mono text-slate-400 w-16">
+              {h.http !== null && h.http !== undefined ? `HTTP ${h.http}` : "err"}
+            </span>
+            <span className="text-[10px] font-mono text-slate-500 flex-1 truncate">
+              {h.error || h.url}
+            </span>
+            <span className="text-[9px] font-mono text-slate-500 w-32 text-right">
+              {(h.at || "").slice(11, 19)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

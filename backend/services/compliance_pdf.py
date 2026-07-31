@@ -87,6 +87,201 @@ def _status_color(status: str) -> colors.Color:
     return _MUTED
 
 
+def render_bundle_pdf(reports: list[dict[str, Any]], signature: dict[str, Any]) -> bytes:
+    """Render a combined signed PDF booklet with a shared table of contents."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        title="PNIA Compliance Bundle",
+        author="PNIA Stateless Compliance Engine",
+        leftMargin=1.6 * cm,
+        rightMargin=1.6 * cm,
+        topMargin=1.6 * cm,
+        bottomMargin=1.6 * cm,
+    )
+    from reportlab.platypus import PageBreak
+
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle(
+        "h1", parent=styles["Title"], fontSize=20, spaceAfter=8, textColor=_NAVY
+    )
+    subtitle = ParagraphStyle(
+        "sub",
+        parent=styles["Normal"],
+        fontSize=9,
+        textColor=_MUTED,
+        spaceAfter=12,
+        fontName="Courier",
+    )
+    body = ParagraphStyle("b", parent=styles["Normal"], fontSize=9, leading=12, textColor=_NAVY)
+    mono = ParagraphStyle("m", parent=styles["Normal"], fontName="Courier", fontSize=8, leading=10, textColor=_NAVY)
+    label = ParagraphStyle("l", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, textColor=_MUTED)
+    st = ParagraphStyle("st", parent=styles["Heading2"], fontSize=12, textColor=_AMBER, spaceBefore=10, spaceAfter=6)
+
+    story: list = []
+    story.append(Paragraph("PNIA · Compliance Bundle", h1))
+    story.append(
+        Paragraph(
+            f"{len(reports)} reports · Bundle signed at {signature.get('signed_at', '')}",
+            subtitle,
+        )
+    )
+
+    # Table of contents
+    story.append(Paragraph("Table of Contents", st))
+    toc_rows = [
+        [Paragraph("#", label), Paragraph("Framework", label), Paragraph("Verdict", label), Paragraph("Score", label)]
+    ]
+    for i, r in enumerate(reports, start=1):
+        fw = r.get("framework", {}) or {}
+        if isinstance(fw, str):
+            fw = {"code": fw}
+        color_hex = {
+            "PASS": "#059669",
+            "PASS_WITH_WARNINGS": "#d97706",
+            "FAIL": "#dc2626",
+        }.get(r.get("status", ""), "#6b7280")
+        toc_rows.append(
+            [
+                Paragraph(str(i), body),
+                Paragraph(str(fw.get("code", "—")), mono),
+                Paragraph(f'<font color="{color_hex}"><b>{r.get("status", "—")}</b></font>', body),
+                Paragraph(str(r.get("score", "—")), body),
+            ]
+        )
+    t = Table(toc_rows, colWidths=[1.0 * cm, 5 * cm, 6.2 * cm, 5 * cm])
+    t.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f9fafb")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    story.append(t)
+    story.append(Spacer(1, 0.4 * cm))
+
+    # Bundle signature
+    story.append(Paragraph("Bundle signature (ES256)", st))
+    sig_rows = [
+        [Paragraph("Algorithm", label), Paragraph(signature.get("algorithm", "ES256"), mono)],
+        [Paragraph("kid", label), Paragraph(signature.get("kid", ""), mono)],
+        [Paragraph("digest SHA-256", label), Paragraph(signature.get("digest_sha256", ""), mono)],
+        [Paragraph("signed_at", label), Paragraph(signature.get("signed_at", ""), mono)],
+        [Paragraph("JWS", label), Paragraph(signature.get("jws", ""), mono)],
+    ]
+    t = Table(sig_rows, colWidths=[3.2 * cm, 14 * cm])
+    t.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f9fafb")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    story.append(t)
+
+    # Per-report pages
+    for i, report in enumerate(reports, start=1):
+        story.append(PageBreak())
+        story.append(Paragraph(f"Report {i} / {len(reports)}", subtitle))
+        fw = report.get("framework", {}) or {}
+        if isinstance(fw, str):
+            fw = {"code": fw}
+        story.append(Paragraph(fw.get("name", fw.get("code", "—")), h1))
+        # framework meta
+        meta_rows = [
+            [Paragraph("Code", label), Paragraph(str(fw.get("code", "—")), mono)],
+            [Paragraph("Regulator", label), Paragraph(str(fw.get("regulator", "—")), body)],
+            [Paragraph("Jurisdiction", label), Paragraph(str(fw.get("jurisdiction", "—")), body)],
+            [Paragraph("Category", label), Paragraph(str(fw.get("category", "—")), body)],
+            [Paragraph("Source", label), Paragraph(str(fw.get("source", "—")), mono)],
+            [Paragraph("Mode", label), Paragraph(str(report.get("mode", "—")), mono)],
+        ]
+        tt = Table(meta_rows, colWidths=[3.2 * cm, 14 * cm])
+        tt.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f9fafb")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.append(tt)
+
+        # verdict summary
+        status = str(report.get("status", "—"))
+        color_hex = {
+            "PASS": "#059669",
+            "PASS_WITH_WARNINGS": "#d97706",
+            "FAIL": "#dc2626",
+        }.get(status, "#6b7280")
+        counts = report.get("counts", {}) or {}
+        story.append(Paragraph("Verdict", st))
+        story.append(
+            Paragraph(
+                f'Status: <font color="{color_hex}"><b>{status}</b></font> · '
+                f'Score {report.get("score", "—")} / 100 · '
+                f'Missing required {counts.get("missing_required", 0)} · '
+                f'Warnings {counts.get("recommended_warnings", 0)}',
+                body,
+            )
+        )
+
+        # missing
+        missing = report.get("missing", []) or []
+        if missing:
+            story.append(Paragraph("Missing (required)", st))
+            rows = [[Paragraph("Field", label), Paragraph("Statement of reasons (DSA Art. 17)", label)]]
+            for m in missing:
+                rows.append([Paragraph(str(m.get("field", "")), mono), Paragraph(str(m.get("hint", "")), body)])
+            tt = Table(rows, colWidths=[5 * cm, 12.2 * cm])
+            tt.setStyle(
+                TableStyle(
+                    [
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#fef2f2")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            story.append(tt)
+
+    footer = ParagraphStyle("footer", parent=styles["Normal"], fontSize=7, textColor=_MUTED, alignment=1)
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(
+        Paragraph(
+            "PNIA Stateless Compliance Engine · No database · EU AI Act Art. 12 · "
+            "DMA open API · DSA Art. 17 · GDPR data-minimisation.",
+            footer,
+        )
+    )
+    doc.build(story)
+    return buf.getvalue()
+
+
 def render_report_pdf(report: dict[str, Any], signature: dict[str, Any]) -> bytes:
     """Render a signed A4 PDF for a validation report."""
     buf = io.BytesIO()

@@ -93,9 +93,9 @@ Konkret verwenden wir `decode_dss_signature` und pad-alignen R und S auf 32 Byte
 
 ```mermaid
 flowchart TB
-  ENV[.env MASTER_KEY 32-byte base64] --> KSM[KeyStorageManager<br/>AES-256-GCM]
+  ENV[env MASTER_KEY 32-byte base64] --> KSM[KeyStorageManager AES-256-GCM]
   KSM -->|wrap| PEM[PKCS8 PEM Private Key]
-  PEM -->|encrypted| Mongo[(MongoDB<br/>ca_material, issuer_keys)]
+  PEM -->|encrypted| Mongo[(MongoDB ca_material issuer_keys)]
 ```
 
 Der `MASTER_KEY` wird **niemals** hardcoded. Fehlt er, verweigert der Prozess den Start
@@ -151,18 +151,18 @@ Wallet-VC (`vct: eu.europa.ec.eudi.email.1`) in der Hand hält.
 sequenceDiagram
     autonumber
     participant W as Wallet
-    participant B as Bridge (FastAPI)
+    participant B as Bridge FastAPI
     participant S as Stalwart JMAP
-    W->>B: POST /api/jmap/auth<br/>{ sd_jwt_vp }
-    B->>B: verify SD-JWT + KB-JWT
+    W->>B: POST /api/jmap/auth with sd_jwt_vp
+    B->>B: verify SD-JWT and KB-JWT
     B->>B: extract email claim
     B->>S: JMAP directory add user (idempotent)
     S-->>B: 200 OK
-    B-->>W: Set-Cookie: SSE_SESSION=…; HttpOnly; Max-Age=60
+    B-->>W: Set-Cookie SSE_SESSION HttpOnly Max-Age=60
     W->>B: EventSource /api/jmap/sse
-    B->>S: httpx.stream JMAP push
+    B->>S: httpx stream JMAP push
     S-->>B: mailbox events
-    B-->>W: SSE data: …
+    B-->>W: SSE data events
 ```
 
 ## 3.3 Session-Cookie (HttpOnly, kein Token-in-URL)
