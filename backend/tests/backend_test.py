@@ -27,9 +27,9 @@ import requests
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://honor-registry-ai.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://stateless-hub.preview.emergentagent.com").rstrip("/")
 # ISSUER_URL matches the value in backend/.env (used as `aud` for proof JWTs)
-ISSUER_URL = os.environ.get("ISSUER_URL", "https://honor-registry-ai.preview.emergentagent.com")
+ISSUER_URL = os.environ.get("ISSUER_URL", "https://stateless-hub.preview.emergentagent.com")
 
 API = f"{BASE_URL}/api"
 

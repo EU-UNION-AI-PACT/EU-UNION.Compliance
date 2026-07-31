@@ -22,6 +22,8 @@ import {
   Library,
   ShieldCheck,
   ChevronDown,
+  Activity,
+  Layers,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +48,8 @@ const coreItems = [
 const pniaItems = [
   { to: "/pnia-registry", labelKey: "pnia_registry", icon: Landmark, testId: "nav-pnia-registry" },
   { to: "/pnia-concept", labelKey: "pnia_concept", icon: ScrollText, testId: "nav-pnia-concept" },
+  { to: "/blueprint", labelKey: "blueprint", icon: Layers, testId: "nav-blueprint" },
+  { to: "/validator", labelKey: "validator", icon: Activity, testId: "nav-validator" },
   { to: "/hnoss-bridge", labelKey: "hnoss_bridge", icon: Split, testId: "nav-hnoss-bridge" },
   { to: "/governance", labelKey: "governance", icon: Scale, testId: "nav-governance" },
   { to: "/mesh-catalog", labelKey: "mesh_catalog", icon: Library, testId: "nav-mesh-catalog" },

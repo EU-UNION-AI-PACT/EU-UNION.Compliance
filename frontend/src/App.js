@@ -17,6 +17,8 @@ import HNOSSBridge from "./pages/HNOSSBridge";
 import Governance from "./pages/Governance";
 import PNIACompliance from "./pages/PNIACompliance";
 import IdentityBroker from "./pages/IdentityBroker";
+import ComplianceValidator from "./pages/ComplianceValidator";
+import Blueprint from "./pages/Blueprint";
 import { AuthProvider, AuthCallback } from "./lib/auth";
 import "./i18n";
 import "./App.css";
@@ -45,6 +47,8 @@ function AppRouter() {
         <Route path="/governance" element={<Governance />} />
         <Route path="/pnia-compliance" element={<PNIACompliance />} />
         <Route path="/identity-broker" element={<IdentityBroker />} />
+        <Route path="/validator" element={<ComplianceValidator />} />
+        <Route path="/blueprint" element={<Blueprint />} />
         <Route path="/mesh-catalog" element={<Sandbox />} />
         <Route path="/uce" element={<Sandbox />} />
         <Route path="/admin" element={<AdminPortal />} />

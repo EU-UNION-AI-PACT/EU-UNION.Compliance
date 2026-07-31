@@ -169,6 +169,34 @@ backend:
         -working: true
         -agent: "testing"
         -comment: "✅ ALL TESTS PASSED (4/4). GET /api/pnia-compliance/bsi-report returns status=PASS with 5 checks. GET /api/pnia-compliance/ returns service info (PNIA EU-ARF Compliance Validator). GET /api/identity-broker/providers returns 23 providers. GET /api/identity-broker/health returns status=healthy."
+  - task: "Stateless Compliance Validator — /api/validate (POST) + /frameworks + /rules + /batch + /stream (SSE)"
+    implemented: true
+    working: true
+    file: "backend/routers/compliance_validate.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NEW · zustandsloses (no MongoDB) Validation-Framework. 251 real frameworks from regula-quest directory. Specialised rule sets: GDPR, DORA, EU AI Act, DMA, DSA, NIS2, eIDAS 2, CRA. Everything else -> GENERIC_GOVERNANCE_SKELETON. Endpoints: GET /api/validate/ (info), /frameworks, /frameworks/{code}, /rules/{code}, /stats, /history; POST /api/validate (single), /batch (up to 20); GET /stream (Server-Sent Events, in-process ring buffer 200 events, no DB, no cross-restart persistence). Test scenarios: (1) info returns 251 frameworks; (2) POST /api/validate with framework=GDPR + partial payload returns status=FAIL with correct counts.missing_required; (3) POST /api/validate with framework=DORA + full payload returns PASS; (4) POST /api/validate with unknown framework returns UNKNOWN_FRAMEWORK; (5) POST /batch with frameworks=['GDPR','DORA'] returns 2 reports and correct overall_status. Do NOT test SSE persistence — it is deliberately volatile."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (23/23). (A) GET /api/validate/ returns service info with frameworks_total=251 and all 8 specialised_validators present (GDPR, DORA, EU AI ACT, DMA, DSA, NIS2, EIDAS 2, CRA). (B) GET /frameworks?category=Privacy&q=gdpr returns count=2 with GDPR in results. (C) GET /frameworks/GDPR returns code=GDPR, category=Privacy. (D) GET /rules/GDPR returns mode=SPECIALISED with 9 rules, each having field+severity+hint. (E) GET /rules/PCI DSS returns mode=GENERIC_GOVERNANCE_SKELETON with 6 rules. (F) POST /validate with GDPR partial payload correctly returns status=FAIL, score=29, missing_required=5. (G) POST /validate with DORA full payload correctly returns status=PASS_WITH_WARNINGS, missing_required=0. (H) POST /validate with unknown framework correctly returns status=UNKNOWN_FRAMEWORK. (I) POST /batch with frameworks=['GDPR','DORA'] correctly returns 2 reports with overall_status=FAIL. (J) GET /history returns 5 events with proper structure (framework, status, at, source) and NO payload value leaks verified (no 'acme' or other sensitive data in history events). SSE /stream endpoint not tested as instructed (manual verification only)."
+  - task: "BLAUPAUSE DER GESAMTARCHITEKTUR — /api/blueprint (info + layers + building-blocks + validation-path + data-flows + regulatory-refs + full)"
+    implemented: true
+    working: true
+    file: "backend/routers/blueprint.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "NEW · read-only static architecture surface. Version 1.0 · Stand 31. Juli 2026 · Daniel Pohl. Verify: /api/blueprint/ returns counts {layers:5, building_blocks:10, validation_stages:6, data_flows:5, regulatory_refs:9}. /api/blueprint/full returns all sections. All sub-endpoints (layers, building-blocks, validation-path, data-flows, regulatory-refs) return their content arrays."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (21/21). (K1) GET /api/blueprint/ returns correct counts (layers=5, building_blocks=10, validation_stages=6, data_flows=5, regulatory_refs=9), meta.version=1.0, meta.asOf='31. Juli 2026'. (K2) GET /layers returns count=5 with first layer.level='Ebene 1'. (K3) GET /building-blocks returns count=10 with first block.code='BB-01'. (K4) GET /validation-path returns count=6 with all stage names starting with 'Stufe'. (K5) GET /data-flows returns count=5. (K6) GET /regulatory-refs returns count=9 with EEAS reference present. (K7) GET /full returns all sections (meta, layers, building_blocks, validation_path, data_flows, regulatory_refs) present and non-empty."
 
 frontend:
   - task: "PNIA Registry page (/pnia-registry)"
@@ -193,16 +221,37 @@ frontend:
         -working: "NA"
         -agent: "main"
         -comment: "CP-01 4 pillars, technical pillars, governance roles, live CIH-01 handshake demo, Urheberrecht/Register block. Screenshot verified rendering."
+  - task: "Compliance Validator page (/validator)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/ComplianceValidator.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot verified — 251 frameworks, 8 specialised, SSE OPEN. Stateless. Frontend testing pending user approval."
+  - task: "Blueprint page (/blueprint)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Blueprint.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Screenshot verified — 5 layers, 10 building blocks, 6 validation stages, 5 flows, 9 regulatory refs rendered."
 
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "PNIA Concil (CP-01) — concept, CIH-01 handshake, ownership"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -210,19 +259,32 @@ test_plan:
 agent_communication:
     -agent: "main"
     -message: |
-      Please test the NEW PNIA backend endpoints only. Use the Bearer token from
-      /app/memory/test_credentials.md for protected endpoints. IMPORTANT: the
-      generate-tribute endpoint uses a real LLM (gpt-5.4) — test it only ONCE to
-      conserve credits. Focus: (1) public reads + correct counts (17 plaques),
-      (2) 401 on protected without Bearer, (3) full compliance flow: create LIVING
-      individual -> create plaque WITHOUT consent should 403 -> create consent ->
-      create plaque succeeds; (4) DSGVO Art.17 revoke crypto-shreds PII (GET
-      individual after revoke returns erased=true, pii=null) and deactivates plaques;
-      (5) Concil handshake 200 vs 403 (Sovereignty Shield); (6) ownership + BSI report
-      + identity-broker providers. Do NOT test existing EUDI-Nexus endpoints.
-    -agent: "testing"
-    -message: |
-      BACKEND TESTING COMPLETE. Test results: 32/34 tests passed (94% success rate).
+      NEW ITERATION 5 — Stateless Compliance Validator + BLAUPAUSE.
+      Please test ONLY the two new routers (do NOT rerun the passing PNIA suite,
+      credits-aware). Focus:
+      (A) GET /api/validate/  -> service info, frameworks_total=251, specialised_validators
+          contains at least GDPR/DORA/EU AI ACT/DMA/DSA/NIS2/EIDAS 2/CRA.
+      (B) GET /api/validate/frameworks?category=Privacy&q=gdpr -> count &gt;=1, contains GDPR.
+      (C) GET /api/validate/frameworks/GDPR -> object with code=GDPR, category=Privacy.
+      (D) GET /api/validate/rules/GDPR -> rules array &gt;= 7, mode=SPECIALISED.
+      (E) GET /api/validate/rules/PCI%20DSS -> mode=GENERIC_GOVERNANCE_SKELETON.
+      (F) POST /api/validate with framework=GDPR and partial payload
+          {"controller":"acme","processing_purpose":"auth"} -> status=FAIL,
+          score < 100, counts.missing_required > 0.
+      (G) POST /api/validate with framework=DORA and full payload covering all 8
+          required DORA fields -> status in {PASS, PASS_WITH_WARNINGS}, score>=100 or
+          missing_required=0.
+      (H) POST /api/validate with framework=DOES_NOT_EXIST -> status=UNKNOWN_FRAMEWORK.
+      (I) POST /api/validate/batch with frameworks=["GDPR","DORA"] -> reports.length==2,
+          overall_status defined.
+      (J) GET /api/validate/history after (F) and (G) -> events count &gt;=2, each event
+          contains 'framework' and 'status' and NO payload values leaked.
+      (K) Blueprint: GET /api/blueprint/ -> counts.layers=5, building_blocks=10,
+          validation_stages=6, data_flows=5, regulatory_refs=9. GET /api/blueprint/full
+          returns all sections non-empty. Sub-endpoints /layers, /building-blocks,
+          /validation-path, /data-flows, /regulatory-refs return matching counts.
+      DO NOT touch SSE /stream endpoint — leave stream tests to manual verification.
+      DO NOT rerun PNIA generate-tribute (LLM cost).
       
       ✅ WORKING (3/4 tasks):
       1. PNIA Registry public endpoints - All 9 tests passed
@@ -257,3 +319,24 @@ agent_communication:
               raise HTTPException(status_code=result["status"], detail=result)
           return result
       ```
+    -agent: "testing"
+    -message: |
+      ITERATION 5 TESTING COMPLETE — Both new routers fully functional.
+      
+      ✅ Stateless Compliance Validator (23/23 tests passed):
+      - Service info: 251 frameworks, all 8 specialised validators present
+      - Framework queries and retrieval working correctly
+      - GDPR rules: SPECIALISED mode with 9 rules
+      - PCI DSS rules: GENERIC_GOVERNANCE_SKELETON mode
+      - Single validation: GDPR partial payload correctly fails, DORA full payload passes
+      - Unknown framework handling: correct UNKNOWN_FRAMEWORK status
+      - Batch validation: 2 reports returned with overall_status
+      - History endpoint: NO payload value leaks verified (critical security check passed)
+      
+      ✅ Blueprint (21/21 tests passed):
+      - All counts correct (layers=5, building_blocks=10, validation_stages=6, data_flows=5, regulatory_refs=9)
+      - Version 1.0, dated 31. Juli 2026
+      - All sub-endpoints return correct data structures
+      - Full endpoint returns all sections non-empty
+      
+      NO ISSUES FOUND. Both routers are production-ready.

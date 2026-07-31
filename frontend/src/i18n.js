@@ -22,6 +22,8 @@ const resources = {
         governance: "Governance",
         mesh_catalog: "Mesh-Katalog",
         uce: "UCE-Envelope",
+        validator: "Compliance-Validator",
+        blueprint: "Blaupause",
       },
       hero: {
         eyebrow: "EU DIGITAL IDENTITY · REFERENCE INFRASTRUCTURE",
@@ -234,6 +236,8 @@ const resources = {
         uce: "UCE Envelope",
         pnia_compliance: "PNIA Compliance",
         identity_broker: "Identity Broker",
+        validator: "Compliance Validator",
+        blueprint: "Blueprint",
       },
       hero: {
         eyebrow: "EU DIGITAL IDENTITY · REFERENCE INFRASTRUCTURE",

@@ -10,7 +10,7 @@ import json
 from typing import Dict, Any, Optional
 
 # Base URL from frontend/.env
-BASE_URL = "https://honor-registry-ai.preview.emergentagent.com"
+BASE_URL = "https://stateless-hub.preview.emergentagent.com"
 API_BASE = f"{BASE_URL}/api"
 
 # Bearer token from test_credentials.md

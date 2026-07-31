@@ -24,7 +24,9 @@ from database import bootstrap_indexes, close_client, get_db  # noqa: E402
 from routers import (  # noqa: E402
     admin,
     auth,
+    blueprint,
     compliance,
+    compliance_validate,
     country,
     governance,
     hnoss_bridge,
@@ -103,6 +105,8 @@ api_router.include_router(pnia_registry.router)
 api_router.include_router(pnia_concil.router)
 api_router.include_router(governance.router)
 api_router.include_router(hnoss_bridge.router)
+api_router.include_router(compliance_validate.router)
+api_router.include_router(blueprint.router)
 api_router.include_router(well_known.router, prefix="/.well-known")
 
 
@@ -126,6 +130,9 @@ async def root() -> dict:
             "/api/pnia-compliance/check",
             "/api/identity-broker/providers",
             "/api/pnia/registry/plaques",
+            "/api/validate/frameworks",
+            "/api/validate (POST)",
+            "/api/blueprint/full",
             "/api/.well-known/openid-credential-issuer",
         ],
     }
