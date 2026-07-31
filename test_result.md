@@ -255,15 +255,18 @@ backend:
         -comment: "✅ ALL TESTS PASSED (6/6). Ops webhook auth guards working correctly: (C1) GET /api/validate/ops-webhook without Bearer returns HTTP 401 (unauthenticated), (C2) POST /api/validate/ops-webhook without Bearer returns HTTP 401 (unauthenticated), (C3) POST /api/validate/ops-webhook/test without Bearer returns HTTP 401 (unauthenticated). All admin-only endpoints properly protected. (D) Regression test passed: POST /api/validate with framework=GDPR and empty payload returns HTTP 200, status=FAIL, missing_required=7 (>= 5 requirement met). Webhook dispatch fire-and-forget mechanism does not break validation flow when webhook is unconfigured. All auth guards and non-blocking dispatch working as designed."
   - task: "Mermaid syntax bug — jmap-wallet-auth + architektur chapters"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/services/seed_paper.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         -working: "NA"
         -agent: "main"
         -comment: "BUG REPORTED · Mermaid parse error on /paper/jmap-wallet-auth (sequenceDiagram had <br/>, curly braces { sd_jwt_vp }, unicode ellipsis, and semicolons in messages) and defensive hardening on /paper/architektur (leading .env dot + comma inside cylindrical [( )] shape). Fixed seed_paper.py and updated the two chapters in the DB via update_one. VERIFICATION REQUIRED via frontend testing: visit /paper/jmap-wallet-auth and /paper/architektur, assert no <pre> containing 'Mermaid parse error' text is present under any [data-testid=mermaid-diagram]."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ BUG FIX VERIFIED (3/3 tests passed). Tested all three paper pages: (1) /paper/jmap-wallet-auth: 1 mermaid sequenceDiagram rendered as SVG with 'Wallet' participant name present, ZERO parse errors. (2) /paper/architektur: 1 mermaid flowchart TB rendered as SVG, ZERO parse errors. (3) /paper/executive-summary: 1 mermaid graph LR rendered as SVG (sanity check), ZERO parse errors. All [data-testid=mermaid-diagram] elements contain <svg> elements and NO <pre> elements with 'Mermaid parse error' text. The fix applied to seed_paper.py (removing <br/>, curly braces, unicode ellipsis, semicolons from sequenceDiagram messages, and cleaning .env/comma issues in flowchart) is working correctly. Screenshots saved as evidence."
   - task: "Custom Rule Editor — /api/validate/custom-rules (admin-scoped)"
     implemented: true
     working: true
@@ -332,8 +335,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Mermaid syntax bug — jmap-wallet-auth + architektur chapters"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -539,3 +541,34 @@ agent_communication:
       NO ISSUES FOUND. All Iteration-7 backend features are production-ready.
       The three new features (bundle PDF, chain-of-custody ledger, ops webhook) are working correctly
       with proper ES256 cryptographic signatures, SHA-256 hash chain integrity, and admin auth guards.
+    -agent: "testing"
+    -message: |
+      MERMAID BUG FIX VERIFICATION COMPLETE — All tests passed.
+      
+      ✅ Verified 3 paper chapter pages (3/3 passed):
+      
+      1. /paper/jmap-wallet-auth (Chapter 03):
+         - Found 1 mermaid sequenceDiagram under section 3.2 Flow
+         - Rendered as SVG ✓ (no parse error)
+         - Contains "Wallet" participant name ✓
+         - Screenshot: jmap-wallet-auth-mermaid.png
+      
+      2. /paper/architektur (Chapter 02):
+         - Found 1 mermaid flowchart TB under section 2.3 Key Storage
+         - Rendered as SVG ✓ (no parse error)
+         - Screenshot: architektur-mermaid.png
+      
+      3. /paper/executive-summary (Chapter 01 - sanity check):
+         - Found 1 mermaid graph LR under section 1.3 Architektur auf einen Blick
+         - Rendered as SVG ✓ (no parse error)
+         - Screenshot: executive-summary-mermaid.png
+      
+      📊 RESULT: 0 parse errors found across all 3 chapters
+      
+      All [data-testid=mermaid-diagram] elements contain <svg> elements.
+      NO <pre> elements with "Mermaid parse error" text detected.
+      
+      The fix applied by main agent (removing <br/>, curly braces, unicode ellipsis, 
+      semicolons from sequenceDiagram messages, and cleaning .env/comma issues in 
+      flowchart) is working correctly. The two defective chapters have been successfully 
+      repaired and updated in MongoDB.
