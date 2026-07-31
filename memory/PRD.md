@@ -31,6 +31,23 @@ Web-App (React + FastAPI + MongoDB) — eIDAS 2.0 / EUDI-Wallet Referenz-Infrast
   4. **GitHub Live-Sync** — 10 repos, per-repo status (LIVE / http-error), aggregate stars, cache-refresh button
 - **Every cell** is bound to a real backend endpoint. No hardcoded emails. No fake events. No client-side auth bypass. Complies with the No-Mocks-Policy.
 
+### Iteration 6 — Signed PDF + Custom Rules + Photorealistic 3D (autonom)
+- **NEW · Signed PDF Compliance Report** (`services/compliance_pdf.py`, `POST /api/validate/report.pdf`, `POST /api/validate/report.sign`):
+  - A4 ReportLab layout with framework metadata, verdict, missing / recommended / covered tables, and a cryptographic signature block (ES256 JWS over the SHA-256 of the canonical JSON of the report).
+  - Response headers `X-PNIA-Signature-Alg`, `X-PNIA-Signature-KID`, `X-PNIA-Digest-SHA256` expose the signature primitives for machine consumption.
+  - Frontend "signed PDF" button on the validator report card triggers a one-shot download.
+- **NEW · Custom Rule Editor** (`services/compliance_custom_rules.py`, `routers/compliance_validate.py` custom-rules endpoints, `AdminPortal` Custom Rules tab):
+  - Admin-scoped `POST /api/validate/custom-rules/{code}` / `DELETE /api/validate/custom-rules/{id}` / `GET /api/validate/custom-rules` (via `require_admin`).
+  - Public read `GET /api/validate/custom-rules/{code}` (transparency principle).
+  - Rules stored in Mongo `compliance_custom_rules` collection, merged into `engine.validate()` at call time — the validator remains stateless from the caller's perspective. Every effective report includes `mode=SPECIALISED+CUSTOM(n)` when overrides apply.
+- **NEW · Framework Detail Drawer** (`components/FrameworkDrawer.jsx`): slide-in right panel, rule list with severity chips, source link, custom overrides block, and a **Copy as cURL** action generating a ready-to-paste `curl -X POST` command with placeholder payload matching the ruleset.
+- **NEW · Live Ticker Sounds + FAIL Pulse** (Web Audio API, no external files): soft sine-wave pling at 880 Hz for PASS, 660 Hz for warnings, 220 Hz sweeping down for FAIL; FAIL ticker rows apply the `pnia-fail-pulse` red-shadow animation for two cycles. Mute toggle in the ticker header.
+- **NEW · Photorealistic 3D isometric architecture stack** (`components/Iso3DStack.jsx`, `pnia_iter6.css`): CSS 3D transform (rotateX 58° · rotateZ -38°, translateZ per layer 0/60/120/180/240 px), diagonal repeating-linear-gradient inner texture, pulsing amber nodes on the top plane, 24s gentle rotation loop. Rendered on the landing page and the blueprint hero.
+- **NEW · Promo video loops** (Pixabay CDN, royalty-free): looping muted autoplay `<video>` layers on the landing hero, the promo section and the blueprint hero — with a dedicated `.pnia-video-overlay` gradient to keep text legible.
+- **NEW · Architecture Timeline** (`pages/Blueprint.jsx` section 6): 7-milestone vertical track from Sprint 1-5 kryptography through Iteration 6 to the Blaupause v1.0 reference concept.
+- **Backend tests**: 21/21 first-pass (13 PDF/JWS + 8 custom-rules auth + regression). Total accumulated: 65 tests passing across iterations 5 & 6.
+- **No LLM calls in this iteration** — credits preserved.
+
 ### Iteration 5 — Stateless Compliance Validator + BLAUPAUSE (autonom)
 - **Infra restore v2**: recreated `/app/backend/.env` (fresh MASTER_KEY, EMERGENT_LLM_KEY, MONGO_URL, DB_NAME, ISSUER_URL) + `/app/frontend/.env`. Installed missing `frozendict` + `cachetools` deps for pyld. Backend + frontend operational again.
 - **NEW · Stateless Compliance Validation Engine** (`routers/compliance_validate.py`, `services/compliance_engine.py`, `data/frameworks.json`):
