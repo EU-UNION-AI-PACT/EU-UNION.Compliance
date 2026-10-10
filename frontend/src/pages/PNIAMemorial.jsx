@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -53,7 +53,7 @@ export default function PNIAMemorial() {
   const [target, setTarget] = useState("English");
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [p, c] = await Promise.all([pniaGetPlaque(id), pniaPlaqueContext(id)]);
@@ -64,11 +64,11 @@ export default function PNIAMemorial() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [load]);
 
   const translate = async () => {
     setBusy(true);
