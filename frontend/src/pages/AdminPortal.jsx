@@ -542,20 +542,20 @@ function CustomRulesTab() {
   const [error, setError] = React.useState(null);
 
   const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
-  const tokenHeader = () => {
+  const tokenHeader = React.useCallback(() => {
     const t = getSessionToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
-  };
+  }, []);
 
-  const loadFrameworks = async () => {
+  const loadFrameworks = React.useCallback(async () => {
     try {
       const j = await fetch(`${BE}/api/validate/frameworks?limit=500`).then((r) => r.json());
       setFrameworks(j.frameworks || []);
     } catch (e) {
       setError(e.message);
     }
-  };
-  const loadAll = async () => {
+  }, [BE]);
+  const loadAll = React.useCallback(async () => {
     try {
       const j = await fetch(`${BE}/api/validate/custom-rules`, { headers: tokenHeader() });
       if (!j.ok) throw new Error(`HTTP ${j.status}`);
@@ -565,23 +565,23 @@ function CustomRulesTab() {
     } catch (e) {
       setError(`load: ${e.message}`);
     }
-  };
-  const loadRules = async (code) => {
+  }, [BE, tokenHeader]);
+  const loadRules = React.useCallback(async (code) => {
     try {
       const j = await fetch(`${BE}/api/validate/custom-rules/${encodeURIComponent(code)}`).then((r) => r.json());
       setRules(j.rules || []);
     } catch (e) {
       setError(e.message);
     }
-  };
+  }, [BE]);
 
   React.useEffect(() => {
     loadFrameworks();
     loadAll();
-  }, []);
+  }, [loadFrameworks, loadAll]);
   React.useEffect(() => {
     if (selected) loadRules(selected);
-  }, [selected]);
+  }, [selected, loadRules]);
 
   const addRule = async () => {
     setBusy(true);
@@ -763,12 +763,12 @@ function OpsWebhookTab() {
   const [saved, setSaved] = React.useState(null);
 
   const BE = process.env.REACT_APP_BACKEND_URL || window.location.origin;
-  const tokenHeader = () => {
+  const tokenHeader = React.useCallback(() => {
     const t = getSessionToken();
     return t ? { Authorization: `Bearer ${t}` } : {};
-  };
+  }, []);
 
-  const load = async () => {
+  const load = React.useCallback(async () => {
     setError(null);
     try {
       const j = await fetch(`${BE}/api/validate/ops-webhook`, {
@@ -788,11 +788,11 @@ function OpsWebhookTab() {
     } catch (e) {
       setError(e.message);
     }
-  };
+  }, [BE, tokenHeader]);
 
   React.useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const save = async () => {
     setBusy(true);
@@ -961,4 +961,3 @@ function OpsWebhookTab() {
     </div>
   );
 }
-
